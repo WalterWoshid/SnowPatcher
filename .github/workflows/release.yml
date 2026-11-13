@@ -100,9 +100,13 @@ jobs:
             gh release download "$RELEASE_TAG" --pattern 'SnowPatcher-*' --dir artifacts/release --clobber
           fi
       - name: Publish verified Windows download to mod.io
+        if: vars.MODIO_MOD_ID != ''
         env:
           MODIO_TOKEN: ${{ secrets.MODIO_TOKEN }}
           MODIO_MOD_ID: ${{ vars.MODIO_MOD_ID }}
         run: |
           python -c 'import json,os; from pathlib import Path; Path("artifacts/metadata.json").write_text(json.dumps({"format":"snowpatcher-application","source":"https://github.com/WalterWoshid/SnowPatcher","tag":os.environ["RELEASE_TAG"]}))'
           python scripts/publish_modio.py --mod-id "$MODIO_MOD_ID" --archive "artifacts/release/SnowPatcher-${RELEASE_TAG#v}-win-x64.zip" --version "${RELEASE_TAG#v}" --metadata artifacts/metadata.json --changelog artifacts/notes.md
+      - name: Report pending mod.io setup
+        if: vars.MODIO_MOD_ID == ''
+        run: echo '::warning::GitHub release published. Set MODIO_MOD_ID and rerun this workflow after creating the mod.io listing.'
