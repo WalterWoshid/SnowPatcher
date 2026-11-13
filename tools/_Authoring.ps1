@@ -292,6 +292,13 @@ function ConvertTo-SnowAuthorOperation($Definition, $Source, [string]$Variant) {
         $operation.edits = $edits
         $operation.Remove('editsFile')
     }
+    if ($operation.type -in @('sso.edit','strings.edit')) {
+        foreach ($edit in $operation.edits) {
+            if ($edit.before.state -eq 'present' -and -not $edit.before.Contains('value')) {
+                throw "Operation '$($operation.id)' needs before.value for a present old-value guard."
+            }
+        }
+    }
     if ($operation.type -in @('sslb.function.edit','sslb.methods.add')) {
         Add-SnowAuthorCheck @{ file='Sources/BinEditor/meta_desc_ssl.ps'; members=@() }
         $pattern = if ($operation.type -eq 'sslb.function.edit') { $operation.function.class + '::' + $operation.function.name } else { '' }
