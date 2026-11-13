@@ -1,0 +1,409 @@
+{
+  "authoringVersion": 1,
+  "id": "snowpatcher-indicator",
+  "name": "SnowPatcher Indicator",
+  "version": "1.0.0",
+  "authors": [
+    "WalterWoshid"
+  ],
+  "description": "Shows the number of applied SnowPatcher mods as floating text in the bottom-left corner of the main menu.",
+  "variants": [
+    "release",
+    "profile",
+    "debug"
+  ],
+  "targets": {
+    "navigation": {
+      "script": "ui.components.nav_panel.navigation_panel_controller",
+      "bundle": "{variant}"
+    },
+    "button": {
+      "script": "ui.components.nav_panel.nav_button_controller",
+      "bundle": "{variant}"
+    },
+    "buttonView": {
+      "script": "ui.components.nav_panel.nav_button_view",
+      "bundle": "{variant}"
+    },
+    "graphics": {
+      "script": "ui.ui_gfx",
+      "bundle": "{variant}"
+    },
+    "legend": {
+      "script": "ui.autogen_libs.ui_navigation_legend",
+      "bundle": "{variant}"
+    },
+    "uiSystem": {
+      "script": "ui.ui_system.ui_system",
+      "bundle": "{variant}"
+    },
+    "component": {
+      "script": "ui.components.base.component_ui_controller_base",
+      "bundle": "{variant}"
+    },
+    "navigationView": {
+      "script": "ui.components.nav_panel.navigation_panel_view",
+      "bundle": "{variant}"
+    },
+    "layers": {
+      "script": "ui.ui_system.layers_provider",
+      "bundle": "{variant}"
+    },
+    "menu": {
+      "script": "ui.main_menu.main_menu_navigation_panel",
+      "bundle": "{variant}"
+    },
+    "menuConfig": {
+      "cache": "[ps]/main_menu_ui_controller.sso"
+    },
+    "legendConfig": {
+      "cache": "[ps]/ui_navigation_legend.ssolib"
+    }
+  },
+  "operations": [
+    {
+      "id": "visible-{variant}",
+      "type": "sslb.function.edit",
+      "target": "menu",
+      "function": {
+        "class": "MainMenuNavigationPanel",
+        "name": "SetBtns"
+      },
+      "edits": [
+        {
+          "match": [
+            "load_slot -1",
+            "get_member member:MainMenuNavigationPanelState::hasUserPickerButton"
+          ],
+          "mode": "replace",
+          "incoming": "include",
+          "code": [
+            "push_bool true"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "float-{variant}",
+      "type": "sslb.methods.add",
+      "target": "menu",
+      "class": "MainMenuNavigationPanel",
+      "templateMember": "SetBtns",
+      "methods": [
+        {
+          "name": "IsButtonHidden",
+          "override": "navigation::NavigationPanelController",
+          "constants": {
+            "buttonId": "showUserPicker"
+          },
+          "parameters": [
+            "buttonId"
+          ],
+          "code": {
+            "file": "IsButtonHidden.asm"
+          }
+        },
+        {
+          "name": "PlaceButtons",
+          "override": "navigation::NavigationPanelController",
+          "constants": {
+            "basePanel": {
+              "type": "NavigationPanelController"
+            },
+            "buttonId": "showUserPicker",
+            "margin": {
+              "float": 24.0
+            },
+            "zero": {
+              "float": 0.0
+            },
+            "opacity": {
+              "float": 100.0
+            },
+            "left": "left",
+            "scale": {
+              "float": 150.0
+            },
+            "originalTextOffset": {
+              "float": 40
+            },
+            "scaleFactor": {
+              "float": 1.5
+            }
+          },
+          "locals": [
+            "buttonController",
+            "textContainer",
+            "corner",
+            "label",
+            "buttonObject"
+          ],
+          "code": {
+            "file": "PlaceButtons.asm"
+          }
+        },
+        {
+          "name": "RemoveBtn",
+          "override": "navigation::NavigationPanelController",
+          "constants": {
+            "basePanel": {
+              "type": "NavigationPanelController"
+            },
+            "normalScale": {
+              "float": 100
+            },
+            "zero": {
+              "float": 0
+            },
+            "originalTextOffset": {
+              "float": 40
+            },
+            "indicatorScale": {
+              "float": 150
+            },
+            "originalTextOpacity": {
+              "float": 50
+            },
+            "empty": ""
+          },
+          "parameters": [
+            "id"
+          ],
+          "locals": [
+            "buttonController",
+            "view",
+            "buttonObject",
+            "textContainer",
+            "label"
+          ],
+          "code": {
+            "file": "RemoveBtn.asm"
+          }
+        }
+      ]
+    },
+    {
+      "id": "label-text",
+      "type": "sso.edit",
+      "target": "menuConfig",
+      "edits": [
+        {
+          "action": "set",
+          "path": [
+            "navPanels",
+            "default",
+            "btns",
+            "showUserPicker",
+            "text"
+          ],
+          "before": {
+            "state": "absent"
+          },
+          "value": {
+            "activeModCount": true,
+            "prefix": "<p align=\"left\"><font face=\"$TitleFont\" size=\"15\"><b>",
+            "suffix": "</b></font></p>"
+          }
+        },
+        {
+          "action": "set",
+          "path": [
+            "navPanels",
+            "default",
+            "btns",
+            "showUserPicker",
+            "forceShow"
+          ],
+          "before": {
+            "state": "absent"
+          },
+          "value": {
+            "json": true
+          }
+        },
+        {
+          "action": "set",
+          "path": [
+            "navPanels",
+            "default",
+            "btns",
+            "showUserPicker",
+            "excludedPlatforms"
+          ],
+          "before": {
+            "state": "absent"
+          },
+          "value": {
+            "json": [
+              "IOS"
+            ]
+          }
+        },
+        {
+          "action": "set",
+          "path": [
+            "navPanels",
+            "default",
+            "btns",
+            "showUserPicker",
+            "disableMouse"
+          ],
+          "before": {
+            "state": "absent"
+          },
+          "value": {
+            "json": true
+          }
+        },
+        {
+          "action": "set",
+          "path": [
+            "navPanels",
+            "default",
+            "btns",
+            "showUserPicker",
+            "useAnim"
+          ],
+          "before": {
+            "state": "absent"
+          },
+          "value": {
+            "json": false
+          }
+        },
+        {
+          "action": "set",
+          "path": [
+            "navPanels",
+            "default",
+            "btns",
+            "showUserPicker",
+            "translateAndColorize"
+          ],
+          "before": {
+            "state": "absent"
+          },
+          "value": {
+            "json": false
+          }
+        },
+        {
+          "action": "set",
+          "path": [
+            "navPanels",
+            "default",
+            "btns",
+            "showUserPicker",
+            "uiInputName"
+          ],
+          "before": {
+            "state": "present",
+            "value": {
+              "json": "ChangeAcc"
+            }
+          },
+          "value": {
+            "json": ""
+          }
+        },
+        {
+          "action": "set",
+          "path": [
+            "navPanels",
+            "default",
+            "btns",
+            "showUserPicker",
+            "input"
+          ],
+          "before": {
+            "state": "present",
+            "value": {
+              "json": {
+                "__type": "InputLinkHoldMr"
+              }
+            }
+          },
+          "value": {
+            "json": {
+              "__type": "null"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "propertyChecks": [
+    {
+      "target": "legendConfig",
+      "path": [
+        "classes",
+        "Navigationpanelbutton",
+        "tfCont",
+        "animated"
+      ]
+    },
+    {
+      "target": "legendConfig",
+      "path": [
+        "classes",
+        "Navigationpanelbutton",
+        "tfCont",
+        "alpha"
+      ]
+    },
+    {
+      "target": "legendConfig",
+      "path": [
+        "classes",
+        "Navigationpanelbutton",
+        "tfCont",
+        "x"
+      ]
+    },
+    {
+      "target": "legendConfig",
+      "path": [
+        "classes",
+        "Navigationpanelbutton",
+        "tfCont",
+        "y"
+      ]
+    },
+    {
+      "target": "legendConfig",
+      "path": [
+        "classes",
+        "Navigationpanelbuttontall",
+        "tfCont",
+        "animated"
+      ]
+    },
+    {
+      "target": "legendConfig",
+      "path": [
+        "classes",
+        "Navigationpanelbuttontall",
+        "tfCont",
+        "alpha"
+      ]
+    },
+    {
+      "target": "legendConfig",
+      "path": [
+        "classes",
+        "Navigationpanelbuttontall",
+        "tfCont",
+        "x"
+      ]
+    },
+    {
+      "target": "legendConfig",
+      "path": [
+        "classes",
+        "Navigationpanelbuttontall",
+        "tfCont",
+        "y"
+      ]
+    }
+  ]
+}

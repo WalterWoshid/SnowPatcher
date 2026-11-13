@@ -1,0 +1,1170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SnowPatcher mod package",
+  "description": "Manifest structure only. The package contract defines cross-file, compatibility and merge checks. No installer or patch executor is implemented by this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "formatVersion",
+    "id",
+    "name",
+    "version",
+    "authors",
+    "game",
+    "files",
+    "operations"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "formatVersion": {
+      "enum": [
+        1,
+        2
+      ]
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "version": {
+      "$ref": "#/$defs/version"
+    },
+    "authors": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 120
+      }
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "game": {
+      "const": "snowrunner"
+    },
+    "testedBuilds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[1-9][0-9]*$"
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/dependency"
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/id"
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/resourceCheck"
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/payload"
+      }
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/operation"
+      }
+    },
+    "relocations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operands",
+        "functions",
+        "values"
+      ],
+      "properties": {
+        "operands": {
+          "type": "array",
+          "maxItems": 100000,
+          "items": {
+            "$ref": "#/$defs/relocationOperand"
+          }
+        },
+        "functions": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "target",
+              "class",
+              "name",
+              "sha256",
+              "mode",
+              "read"
+            ],
+            "properties": {
+              "target": {
+                "$ref": "#/$defs/target"
+              },
+              "class": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8192
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8192
+              },
+              "sha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "mode": {
+                "enum": [
+                  "body",
+                  "signature"
+                ]
+              },
+              "read": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "values": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 8,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 8192
+                }
+              },
+              "sha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "target": {
+                "$ref": "#/$defs/target"
+              }
+            }
+          }
+        }
+      }
+    },
+    "modioUrl": {
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^https://(?:www\\.)?mod\\.io/g/snowrunner/m/[A-Za-z0-9][A-Za-z0-9_-]*/?$"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^(?!/)(?!.*\\\\)(?!.*:)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*[\\u0000-\\u001f<>\"|?*])(?!.*[. ](?:/|$))[^/]+(?:/[^/]+)*$"
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "minVersion"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "minVersion": {
+          "$ref": "#/$defs/version"
+        },
+        "maxVersionExclusive": {
+          "$ref": "#/$defs/version"
+        }
+      }
+    },
+    "resourceCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "sha256"
+      ],
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "size"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 268435456
+        }
+      }
+    },
+    "member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "name"
+      ],
+      "properties": {
+        "format": {
+          "enum": [
+            "zip",
+            "cache",
+            "sslbundle"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "members"
+      ],
+      "properties": {
+        "file": {
+          "$ref": "#/$defs/path"
+        },
+        "members": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/member"
+          }
+        }
+      }
+    },
+    "ssoValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "json"
+          ],
+          "properties": {
+            "json": {}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ssoFile"
+          ],
+          "properties": {
+            "ssoFile": {
+              "$ref": "#/$defs/path"
+            }
+          }
+        }
+      ]
+    },
+    "ssoBefore": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state"
+          ],
+          "properties": {
+            "state": {
+              "const": "absent"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "value"
+          ],
+          "properties": {
+            "state": {
+              "const": "present"
+            },
+            "value": {
+              "$ref": "#/$defs/ssoValue"
+            }
+          }
+        }
+      ]
+    },
+    "ssoOutputValue": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ssoValue"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "activeModCount"
+          ],
+          "properties": {
+            "activeModCount": {
+              "const": true
+            },
+            "prefix": {
+              "type": "string",
+              "maxLength": 1024
+            },
+            "suffix": {
+              "type": "string",
+              "maxLength": 1024
+            }
+          }
+        }
+      ]
+    },
+    "ssoPath": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          }
+        ]
+      }
+    },
+    "newMethod": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "slot",
+        "signature",
+        "constants",
+        "code"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "slot": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 65535
+        },
+        "signature": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "returns",
+            "arguments"
+          ],
+          "properties": {
+            "returns": {
+              "type": "string",
+              "minLength": 1
+            },
+            "arguments": {
+              "type": "array",
+              "maxItems": 64,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "constants": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "string"
+                ],
+                "properties": {
+                  "string": {
+                    "type": "string",
+                    "maxLength": 8192
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "float"
+                ],
+                "properties": {
+                  "float": {
+                    "type": "number",
+                    "minimum": -3.4028234663852886e+38,
+                    "maximum": 3.4028234663852886e+38
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "typeSymbol"
+                ],
+                "properties": {
+                  "typeSymbol": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 65535
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "code": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100000,
+          "items": {
+            "$ref": "#/$defs/instruction"
+          }
+        }
+      }
+    },
+    "ssoEdit": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action",
+            "path",
+            "before",
+            "value"
+          ],
+          "properties": {
+            "action": {
+              "enum": [
+                "set",
+                "append-unique"
+              ]
+            },
+            "path": {
+              "$ref": "#/$defs/ssoPath"
+            },
+            "before": {
+              "$ref": "#/$defs/ssoBefore"
+            },
+            "value": {
+              "$ref": "#/$defs/ssoOutputValue"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action",
+            "path",
+            "before"
+          ],
+          "properties": {
+            "action": {
+              "const": "remove"
+            },
+            "path": {
+              "$ref": "#/$defs/ssoPath"
+            },
+            "before": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "state",
+                "value"
+              ],
+              "properties": {
+                "state": {
+                  "const": "present"
+                },
+                "value": {
+                  "$ref": "#/$defs/ssoValue"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "stringBefore": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state"
+          ],
+          "properties": {
+            "state": {
+              "const": "absent"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "value"
+          ],
+          "properties": {
+            "state": {
+              "const": "present"
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "stringEdit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "before",
+        "value"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z_0-9]*$"
+        },
+        "before": {
+          "$ref": "#/$defs/stringBefore"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "matchInstruction": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        {
+          "type": "integer",
+          "minimum": -8388608,
+          "maximum": 8388607
+        }
+      ],
+      "items": false,
+      "minItems": 2
+    },
+    "instruction": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "label"
+          ],
+          "properties": {
+            "label": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z_0-9]*$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "arg"
+          ],
+          "properties": {
+            "op": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "arg": {
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": -8388608,
+                  "maximum": 8388607
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "label"
+                  ],
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z_][A-Za-z_0-9]*$"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "boundary"
+                  ],
+                  "properties": {
+                    "boundary": {
+                      "enum": [
+                        "match.start",
+                        "match.end",
+                        "function.end"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "op": {
+                    "enum": [
+                      22,
+                      24,
+                      25,
+                      26
+                    ]
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "arg": {
+                    "type": "object"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "arg": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "functionEdit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "match",
+        "mode",
+        "incoming",
+        "code"
+      ],
+      "properties": {
+        "match": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/matchInstruction"
+          }
+        },
+        "mode": {
+          "enum": [
+            "before",
+            "after",
+            "replace"
+          ]
+        },
+        "incoming": {
+          "enum": [
+            "include",
+            "skip"
+          ]
+        },
+        "code": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/instruction"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "replace"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "incoming": {
+                "const": "include"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "code": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "operation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "type",
+            "target",
+            "payload"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "type": {
+              "const": "resource.add"
+            },
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "payload": {
+              "$ref": "#/$defs/path"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "type",
+            "target",
+            "beforeSha256",
+            "payload"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "type": {
+              "const": "resource.replace"
+            },
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "beforeSha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "payload": {
+              "$ref": "#/$defs/path"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "type",
+            "target",
+            "beforeSha256"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "type": {
+              "const": "resource.remove"
+            },
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "beforeSha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "type",
+            "target",
+            "edits"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "type": {
+              "const": "sso.edit"
+            },
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "beforeSha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "edits": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/ssoEdit"
+              }
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "edits": {
+                    "contains": {
+                      "properties": {
+                        "path": {
+                          "contains": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "beforeSha256"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "type",
+            "target",
+            "edits"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "type": {
+              "const": "strings.edit"
+            },
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "edits": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/stringEdit"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "type",
+            "target",
+            "moduleContextSha256",
+            "class",
+            "templateMember",
+            "methods"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "type": {
+              "const": "sslb.methods.add"
+            },
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "moduleContextSha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "class": {
+              "type": "string",
+              "minLength": 1
+            },
+            "templateMember": {
+              "type": "string",
+              "minLength": 1
+            },
+            "methods": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 64,
+              "items": {
+                "$ref": "#/$defs/newMethod"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "type",
+            "target",
+            "moduleContextSha256",
+            "function",
+            "edits"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "type": {
+              "const": "sslb.function.edit"
+            },
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "moduleContextSha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "function": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "class",
+                "name",
+                "bodySha256"
+              ],
+              "properties": {
+                "class": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "bodySha256": {
+                  "$ref": "#/$defs/sha256"
+                }
+              }
+            },
+            "edits": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/functionEdit"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "relocationOperand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "path",
+        "kind",
+        "target",
+        "name"
+      ],
+      "properties": {
+        "operation": {
+          "$ref": "#/$defs/id"
+        },
+        "path": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8192
+              },
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100000
+              }
+            ]
+          }
+        },
+        "kind": {
+          "enum": [
+            "member",
+            "type",
+            "global",
+            "constant",
+            "function"
+          ]
+        },
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        },
+        "contract": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "member",
+                  "function"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "contract"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "formatVersion": {
+            "const": 2
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "relocations"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "relocations"
+          ]
+        }
+      }
+    }
+  ]
+}
