@@ -1,6 +1,7 @@
 # Shared authoring and literal JSON helpers.
 
 function ConvertTo-SnowCanonicalObject($Value) {
+    if ($null -eq $Value -or $Value -is [string] -or $Value -is [ValueType]) { return $Value }
     if ($Value -is [Collections.IDictionary]) {
         $result = [Collections.Specialized.OrderedDictionary]::new([StringComparer]::Ordinal)
         $keys = [string[]]@($Value.Keys)
