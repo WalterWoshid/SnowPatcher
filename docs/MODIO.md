@@ -56,3 +56,15 @@ restricts redirects to HTTPS mod.io API/CDN hosts. Fresh
 update rather than persisting expiring URLs in the library. No access token,
 API key or download URL is saved in library records. Updating this library does
 not write installed game files or saves; game writes happen only through Apply.
+
+## Publishing
+
+Version tags build self-contained Windows and Linux desktop archives. The release
+job uploads the Windows ZIP using the `MODIO_TOKEN` secret and `MODIO_MOD_ID`
+variable. Repeated runs retain existing GitHub assets and reconcile mod.io files
+by version and hash. The Windows platform's live-file ID is authoritative.
+
+mod.io can classify EXE archives as potentially harmful. The desktop publisher
+retains and reports that warning; detected threats stop publication. Mod package
+downloads and publishing reject both verdicts. Game-dependent mod builds run in
+the private maintenance repository, with Steam credentials kept off public runners.
