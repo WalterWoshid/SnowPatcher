@@ -1,0 +1,17 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SnowPatcher.App.Views.AddModWindow"
+        Title="Add mod" Width="560" MinWidth="460" SizeToContent="Height"
+        CanResize="False" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+  <Grid Margin="12" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="10">
+    <TextBlock Text="mod.io link" />
+    <TextBox Grid.Row="1" x:Name="LinkBox" PlaceholderText="https://mod.io/g/snowrunner/m/..."
+             TextChanged="OnLinkChanged" AutomationProperties.Name="mod.io link" />
+    <TextBlock Grid.Row="2" x:Name="MessageText" IsVisible="False" TextWrapping="Wrap" MaxWidth="536" />
+    <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+      <Button x:Name="ChooseZipButton" Content="Choose ZIP..." Click="OnChooseZip" />
+      <Button Grid.Column="2" x:Name="CancelButton" Content="Cancel" IsCancel="True" Click="OnCancel" />
+      <Button Grid.Column="3" x:Name="AddButton" Content="Add" IsDefault="True" IsEnabled="False" Click="OnAdd" />
+    </Grid>
+  </Grid>
+</Window>

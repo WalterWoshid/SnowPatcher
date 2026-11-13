@@ -1,0 +1,153 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SnowPatcher.App.ViewModels"
+        x:Class="SnowPatcher.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="SnowPatcher"
+        Width="900" Height="500"
+        MinWidth="720" MinHeight="400"
+        DragDrop.AllowDrop="True"
+        WindowStartupLocation="CenterScreen">
+  <Grid Margin="12" RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="10">
+    <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="5" ColumnSpacing="8">
+      <TextBlock Text="SnowRunner folder" />
+      <TextBox Grid.Row="1" x:Name="GameFolderBox"
+               Text="{Binding GameFolder}" IsReadOnly="True"
+               PlaceholderText="Choose your SnowRunner installation folder"
+               AutomationProperties.Name="SnowRunner installation folder" />
+      <Button Grid.Row="1" Grid.Column="1" Content="_Browse..." Click="OnBrowseGameFolder" IsEnabled="{Binding CanBrowse}" />
+      <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding BuildText}"
+                 IsVisible="{Binding HasInstallationDetails}" ToolTip.Tip="{Binding BuildDetail}" />
+    </Grid>
+
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+      <TextBlock Text="Mods" VerticalAlignment="Center" />
+      <Button Grid.Column="1" x:Name="AddModsButton" Content="_Add mods..." IsEnabled="{Binding CanAddMods}" Click="OnAddMods" />
+    </Grid>
+
+    <Border Grid.Row="2" x:Name="ModsBorder" Background="White" BorderBrush="#A0A0A0" BorderThickness="1" IsEnabled="{Binding CanEditMods}">
+      <Grid RowDefinitions="Auto,*">
+        <Border Background="#F5F5F5" BorderBrush="#D0D0D0" BorderThickness="0,0,0,1">
+          <Grid ColumnDefinitions="96,*,72,108,116,32" ColumnSpacing="12" Margin="8,6">
+            <TextBlock Text="Status" />
+            <TextBlock Grid.Column="1" Text="Mod" />
+            <TextBlock Grid.Column="2" Text="Version" />
+            <TextBlock Grid.Column="3" Text="Check" />
+            <TextBlock Grid.Column="4" Text="Updates" />
+          </Grid>
+        </Border>
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+          <ItemsControl x:Name="ModList" ItemsSource="{Binding Mods}"
+                        AutomationProperties.Name="Mods">
+            <ItemsControl.Styles>
+              <Style Selector="Border.modRow:pointerover">
+                <Setter Property="Background" Value="#F5F5F5" />
+              </Style>
+              <Style Selector="ToggleButton.modToggle">
+                <Setter Property="Width" Value="96" />
+                <Setter Property="MinHeight" Value="28" />
+                <Setter Property="Padding" Value="10,4" />
+                <Setter Property="CornerRadius" Value="0" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="Background" Value="#E4E4E4" />
+                <Setter Property="BorderBrush" Value="#A0A0A0" />
+                <Setter Property="Foreground" Value="#333333" />
+              </Style>
+              <Style Selector="ToggleButton.modToggle /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{TemplateBinding Background}" />
+                <Setter Property="BorderBrush" Value="{TemplateBinding BorderBrush}" />
+              </Style>
+              <Style Selector="ToggleButton.modToggle:pointerover">
+                <Setter Property="Background" Value="#D5D5D5" />
+              </Style>
+              <Style Selector="ToggleButton.modToggle:pressed">
+                <Setter Property="Background" Value="#C8C8C8" />
+              </Style>
+              <Style Selector="ToggleButton.modToggle:checked">
+                <Setter Property="Background" Value="#2F7D32" />
+                <Setter Property="BorderBrush" Value="#226328" />
+                <Setter Property="Foreground" Value="White" />
+              </Style>
+              <Style Selector="ToggleButton.modToggle:checked:pointerover">
+                <Setter Property="Background" Value="#276E2B" />
+              </Style>
+              <Style Selector="ToggleButton.modToggle:checked:pressed">
+                <Setter Property="Background" Value="#215E25" />
+              </Style>
+            </ItemsControl.Styles>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ModItemViewModel">
+                <Border Classes="modRow" Background="Transparent"
+                        BorderBrush="#EEEEEE" BorderThickness="0,0,0,1">
+                  <Grid ColumnDefinitions="96,*,72,108,116,32" ColumnSpacing="12" Margin="8,3" MinHeight="32">
+                    <ToggleButton Classes="modToggle" IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                                  IsEnabled="{Binding CanToggle}"
+                                  Content="{Binding Status}" VerticalAlignment="Center"
+                                  ToolTip.Tip="{Binding ToggleLabel}" AutomationProperties.Name="{Binding ToggleLabel}" />
+                    <Grid Grid.Column="1" ToolTip.Tip="{Binding Details}">
+                      <TextBlock Text="{Binding Name}" IsVisible="{Binding ShowPlainName}" VerticalAlignment="Center"
+                                 TextTrimming="CharacterEllipsis" />
+                      <Button Classes="modPageLink" IsVisible="{Binding HasModPage}" Background="Transparent"
+                              BorderThickness="0" MinWidth="0" Padding="0" HorizontalContentAlignment="Stretch"
+                              Cursor="Hand" Click="OnModPage" AutomationProperties.Name="{Binding ModPageLabel}">
+                        <TextBlock Text="{Binding Name}" Foreground="#0000EE" TextDecorations="Underline"
+                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                      </Button>
+                    </Grid>
+                    <Grid Grid.Column="2" ToolTip.Tip="{Binding VersionDetail}">
+                      <TextBlock Text="{Binding Version}" IsVisible="{Binding ShowPlainVersion}" VerticalAlignment="Center"
+                                 TextTrimming="CharacterEllipsis" />
+                      <Button IsVisible="{Binding HasPreviousVersions}" IsEnabled="{Binding CanChooseVersion}"
+                              Background="Transparent" BorderThickness="0" MinWidth="0" Padding="0"
+                              HorizontalAlignment="Left" VerticalAlignment="Center" Click="OnPreviousVersions"
+                              AutomationProperties.Name="{Binding PreviousVersionsLabel}">
+                        <TextBlock Text="{Binding Version}" TextDecorations="Underline" TextTrimming="CharacterEllipsis" />
+                      </Button>
+                    </Grid>
+                    <Button Grid.Column="3" Background="Transparent" BorderThickness="0" MinWidth="0" Padding="0"
+                            HorizontalAlignment="Left" VerticalAlignment="Center" ToolTip.Tip="{Binding CheckDetail}"
+                            AutomationProperties.Name="{Binding CheckLabel}" Click="OnCompatibilityDetails">
+                      <TextBlock Text="{Binding CheckStatus}" TextDecorations="Underline" />
+                    </Button>
+                    <Grid Grid.Column="4" ToolTip.Tip="{Binding UpdateDetail}">
+                      <Button Content="{Binding UpdateActionText}" IsVisible="{Binding HasUpdateAction}"
+                              HorizontalAlignment="Left" Click="OnUpdateMod" AutomationProperties.Name="{Binding UpdateActionLabel}" />
+                      <TextBlock Text="{Binding UpdateStatus}" IsVisible="{Binding ShowUpdateStatus}"
+                                 VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                    <Button Grid.Column="5" Width="32" Height="32" MinWidth="32" Padding="7"
+                            IsVisible="{Binding ShowRemove}"
+                            IsEnabled="{Binding CanRemove}"
+                            ToolTip.Tip="{Binding RemoveLabel}" AutomationProperties.Name="{Binding RemoveLabel}"
+                            Click="OnRemoveMod">
+                      <PathIcon Width="14" Height="16"
+                                Data="M6,19 C6,20.1 6.9,21 8,21 L16,21 C17.1,21 18,20.1 18,19 L18,7 L6,7 Z M8,9 L16,9 L16,19 L8,19 Z M15.5,4 L14.5,3 L9.5,3 L8.5,4 L5,4 L5,6 L19,6 L19,4 Z" />
+                    </Button>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+        <TextBlock Grid.Row="1" Text="Drop mod ZIPs here, or use Add mods." IsVisible="{Binding IsEmpty}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   IsHitTestVisible="False" />
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="3" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+      <TextBlock x:Name="StatusText" Text="{Binding StatusText}" TextWrapping="Wrap"
+                 IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                 MaxHeight="60" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding StatusText}" />
+      <TextBlock Grid.Column="1" Text="{Binding ModCountText}" />
+    </Grid>
+
+    <Grid Grid.Row="4" ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8">
+      <Button x:Name="RestoreButton" Content="Backups..." IsEnabled="{Binding CanRestore}" Click="OnRestoreBackup" />
+      <Button Grid.Column="1" x:Name="CheckModsButton" Content="{Binding CheckModsText}" IsEnabled="{Binding CanCheckMods}" Click="OnCheckMods" />
+      <Button Grid.Column="3" x:Name="ApplyButton" Content="{Binding ApplyText}" IsEnabled="{Binding CanApply}"
+              ToolTip.Tip="{Binding ApplyDetail}" Click="OnApplyMods" />
+    </Grid>
+  </Grid>
+</Window>
