@@ -69,6 +69,7 @@ function Get-SnowPortableConstant($Report, $Method, [int]$Index) {
     }
 }
 function Get-SnowPortableFunctionHash($Report, $Method) {
+    $opcodes=Get-SnowOpcodes
     $identity=$Method.Class+'::'+$Method.Name
     $flags=@($Method.Fields|Where-Object Field -EQ 3)
     if($flags.Count -ne 1 -or @($Method.Fields|Where-Object {$_.Field -notin @(1,2,3,4,5)}).Count){throw 'Unknown portable function metadata.'}
@@ -87,7 +88,7 @@ function Get-SnowPortableFunctionHash($Report, $Method) {
             $contracts=[string[]]@(@($names|ForEach-Object { $_+'='+(Get-SnowPortableMember $Report $_).contract })+@($functionNames|ForEach-Object {'global:'+$_+'='+(Get-SnowPortableGlobalFunction $Report $_).contract}))
             [Array]::Sort($contracts,[StringComparer]::Ordinal)
             $value='m:'+($contracts -join ';')
-        } elseif($op -in @(6,15,20,53,57,58)) { $value='c:'+(Get-SnowPortableConstant $Report $Method $arg) }
+        } elseif($opcodes.ContainsKey($op) -and $opcodes[$op].Operand -eq 'constant') { $value='c:'+(Get-SnowPortableConstant $Report $Method $arg) }
         elseif($op -eq 8){$global=@($Report.References|Where-Object {$_.Kind -eq 'global' -and $_.Index -eq $arg});if($global.Count -ne 1){throw 'Invalid global.'};$value='g:'+(ConvertTo-SnowB64 $global[0].Name)}
         else { $value='n:'+[string]$arg }
         $lines.Add([string]$op+':'+$value)
@@ -171,6 +172,7 @@ function Add-SnowPortableBinding($Operation,$Path,[string]$Kind,$Target,[string]
     $script:SnowPortableOperands.Add($binding)
 }
 function Add-SnowPortableCode($SourceCode,$Rows,$Prefix,$Operation,[bool]$FunctionConstants) {
+    $opcodes=Get-SnowOpcodes
     $lines=@(Get-SnowCodeLines $SourceCode $script:SnowAuthorRoot);$report=Get-SnowAuthorModule $Operation.target
     if($lines.Count -ne $Rows.Count){throw 'Portable instruction mapping is inconsistent.'}
     for($i=0;$i -lt $Rows.Count;$i++) {
@@ -187,7 +189,7 @@ function Add-SnowPortableCode($SourceCode,$Rows,$Prefix,$Operation,[bool]$Functi
             }
             Add-SnowPortableBinding $Operation $path 'member' $target $name
         } elseif($op -eq 8){$name=@($report.References|Where-Object {$_.Kind -eq 'global' -and $_.Index -eq $arg})[0].Name;Add-SnowPortableBinding $Operation $path 'global' $Operation.target $name}
-        elseif($FunctionConstants -and $op -in @(6,15,20,53,57,58)) {
+        elseif($FunctionConstants -and $opcodes.ContainsKey($op) -and $opcodes[$op].Operand -eq 'constant') {
             $method=@($report.Functions|Where-Object {$_.Class -ceq $Operation.function.class -and $_.Name -ceq $Operation.function.name})[0]
             Add-SnowPortableBinding $Operation $path 'constant' $Operation.target (Get-SnowPortableConstant $report $method ([int]$arg))
         }

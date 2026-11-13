@@ -40,6 +40,7 @@ internal sealed partial class SslModule
         // Bundle membership resolves the name; identity uniqueness is checked separately.
     }
 
+    internal static bool UsesConstantOperand(int op) => op is 6 or 15 or 20 or 53 or 57 or 58;
     private static int Int32(JsonElement value) => checked((int)PackageManifestReader.Integer(value));
     private string StringAt(ulong index) => index < (ulong)_strings.Length ? _strings[(int)index] : throw new CheckFailure("unsupported", "Invalid SSLB string reference.");
     private sealed record Field(int Number, int Wire, ulong Integer, byte[] Data, byte[] Encoded);

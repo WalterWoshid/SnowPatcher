@@ -8,13 +8,7 @@ internal sealed partial class SslModule
 {
     internal byte[] AddMethods(JsonElement definition, bool guards, CancellationToken token)
     {
-        using var context = new MemoryStream();
-        foreach (var field in _fields.Where(f => f.Number != 8))
-        {
-            context.Write(field.Encoded);
-        }
-
-        if (guards && GameResources.Hash(context.ToArray()) != definition.GetProperty("moduleContextSha256").GetString())
+        if (guards && ContextHash() != definition.GetProperty("moduleContextSha256").GetString())
         {
             throw new CheckFailure("changed", "The method's class layout changed. This mod needs an update.");
         }
@@ -249,7 +243,7 @@ internal sealed partial class SslModule
             if (value is < -8388608 or > 8388607 ||
                 op is 1 or 8 or 10 or 13 or 14 or 60 && value < 0 ||
                 op is 7 or 59 && (value < -locals || value >= argumentCount) ||
-                op is 6 or 15 or 20 or 53 or 57 or 58 && (value < 0 || value >= constantCount) ||
+                UsesConstantOperand(op) && (value < 0 || value >= constantCount) ||
                 op is 18 or 19 && value != argumentCount ||
                 op == 5 && value is not (0 or 1) ||
                 op is 2 or 3 or 21 or 27 or 32 or 33 or 36 or 37 or 40 or 56 or 68 or 69 or 71 or 72 && value != 0)

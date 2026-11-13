@@ -14,8 +14,9 @@ internal sealed partial class SslModule
     private string[]? _relocationNative;
     private readonly Dictionary<string, (int Slot, string Contract)> _memberContracts = new(StringComparer.Ordinal);
     private readonly Dictionary<int, string> _slotContracts = [];
+    private string? _contextHash;
 
-    internal string ContextHash() => GameResources.Hash(_fields.Where(f => f.Number != 8).SelectMany(f => f.Encoded).ToArray());
+    internal string ContextHash() => _contextHash ??= GameResources.Hash(_fields.Where(f => f.Number != 8).SelectMany(f => f.Encoded).ToArray());
     private List<Field>[] RelocationSymbols => _relocationSymbols ??= _fields.Where(f => f.Number == 5).Select(f => Fields(f.Data)).ToArray();
     private List<Field>[] RelocationClasses => _relocationClasses ??= _fields.Where(f => f.Number == 7).Select(f => Fields(f.Data)).ToArray();
     private List<Field>[] RelocationReferences => _relocationReferences ??= Fields(One(_fields, 4, 2).Data).Where(f => f.Number == 4).Select(f => Fields(f.Data)).ToArray();
@@ -382,10 +383,9 @@ internal sealed partial class SslModule
                 throw new CheckFailure("unsupported", "Unsupported scalar/array instruction flags.");
             }
 
-            var identity = op switch
+            var identity = UsesConstantOperand(op) ? "c:" + ConstantName(definition, arg) : op switch
             {
                 10 or 13 or 14 or 60 => SlotContract(arg),
-                6 or 15 or 20 or 53 or 57 or 58 => "c:" + ConstantName(definition, arg),
                 8 => "g:" + B64(GlobalName(arg)),
                 _ => "n:" + arg.ToString(CultureInfo.InvariantCulture)
             };

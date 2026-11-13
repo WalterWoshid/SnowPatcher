@@ -9,13 +9,7 @@ internal sealed partial class SslModule
 {
     public FunctionPreview Preview(JsonElement operation, bool guards, IReadOnlySet<(int Op, int Value)>? boundReferences = null, CancellationToken cancellationToken = default)
     {
-        using var context = new MemoryStream();
-        foreach (var field in _fields.Where(f => f.Number != 8))
-        {
-            context.Write(field.Encoded);
-        }
-
-        if (guards && GameResources.Hash(context.ToArray()) != operation.GetProperty("moduleContextSha256").GetString())
+        if (guards && ContextHash() != operation.GetProperty("moduleContextSha256").GetString())
         {
             throw new CheckFailure("changed", "The function's shared tables or class metadata changed. This mod needs an update.");
         }
@@ -279,7 +273,7 @@ internal sealed partial class SslModule
                     throw new CheckFailure("unsupported", "The edit requires a local slot not already used by this function.");
                 }
 
-                if (op is 6 or 15 or 20 or 53 or 57 or 58 && (value < 0 || value >= bodyFields.Count(f => f.Number == 4)))
+                if (UsesConstantOperand(op) && (value < 0 || value >= bodyFields.Count(f => f.Number == 4)))
                 {
                     throw new CheckFailure("unsupported", "The edit uses a missing function constant.");
                 }

@@ -156,7 +156,7 @@ internal static class PortablePackage
                 {
                     Need(path, "global");
                 }
-                else if (constants && op is 6 or 15 or 20 or 53 or 57 or 58)
+                else if (constants && SslModule.UsesConstantOperand(op))
                 {
                     Need(path, "constant");
                 }
