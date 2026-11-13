@@ -1,0 +1,4 @@
+* text=auto eol=lf
+
+# Payload hashes must survive checkout without newline conversion.
+examples/**/payloads/** -text

@@ -1,0 +1,17 @@
+# Build
+**/bin/
+**/obj/
+artifacts/
+
+# IDE
+.idea/
+.vs/
+*.user
+*.suo
+
+# Game files
+*.pak
+*.sslbundle
+*.sslb
+*.cache_block
+*.zip
