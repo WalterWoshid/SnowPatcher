@@ -247,7 +247,7 @@ internal sealed partial class SslModule
             }
 
             if (value is < -8388608 or > 8388607 ||
-                op is 1 or 4 or 8 or 10 or 13 or 14 or 60 && value < 0 ||
+                op is 1 or 8 or 10 or 13 or 14 or 60 && value < 0 ||
                 op is 7 or 59 && (value < -locals || value >= argumentCount) ||
                 op is 6 or 15 or 20 or 53 or 57 or 58 && (value < 0 || value >= constantCount) ||
                 op is 18 or 19 && value != argumentCount ||
