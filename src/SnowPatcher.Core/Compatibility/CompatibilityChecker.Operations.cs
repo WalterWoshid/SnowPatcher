@@ -113,7 +113,7 @@ public static partial class CompatibilityChecker
                     throw new CheckFailure("missing", "The script module is missing.");
                 }
 
-                var function = new SslModule(data).Preview(definition, guards, token);
+                var function = new SslModule(data).Preview(definition, guards, PortablePackage.BoundReferences(package.Manifest, operation), token);
                 foreach (var change in function.Changes)
                 {
                     claims?.Add(new Claim(result, operation.Id, target, "function", [change.Identity], change.BodyHash, change.Fingerprint, change.Start, change.End, change.Insertion, definition.GetProperty("function").GetProperty("class").GetString() + "::" + definition.GetProperty("function").GetProperty("name").GetString()));

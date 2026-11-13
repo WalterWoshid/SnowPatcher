@@ -42,10 +42,11 @@ internal static class SelectionComposer
                                 group.Edits.Add(edit);
                             }
                         }
+                        group.BoundReferences.UnionWith(PortablePackage.BoundReferences(package.Manifest, operation));
 
                         var combined = JsonNode.Parse(group.Definition.GetRawText())!.AsObject();
                         combined["edits"] = new JsonArray(group.Edits.Select(e => JsonNode.Parse(e.GetRawText())).ToArray());
-                        var preview = new SslModule(group.Module).Preview(JsonSerializer.SerializeToElement(combined), false, token);
+                        var preview = new SslModule(group.Module).Preview(JsonSerializer.SerializeToElement(combined), false, group.BoundReferences, token);
                         view.Write(operation.Target, probe.AdoptFunction(preview.Bytes, definition));
                     }
                     else
@@ -90,5 +91,6 @@ internal static class SelectionComposer
     private sealed record FunctionGroup(byte[] Module, string BodyHash, JsonElement Definition)
     {
         public List<JsonElement> Edits { get; } = [];
+        public HashSet<(int Op, int Value)> BoundReferences { get; } = [];
     }
 }

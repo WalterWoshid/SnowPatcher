@@ -11,7 +11,7 @@ internal sealed partial class SslModule
 {
     private static readonly HashSet<int> Branches = [22, 24, 25, 26];
     // Unrecognized instructions or metadata may carry relocatable offsets. Refuse them rather than guessing.
-    private static readonly HashSet<int> Opcodes = [1, 2, 3, 4, 5, 6, 7, 8, 10, 13, 18, 19, 22, 24, 25, 26, 27, 32, 36, 48, 49, 50, 53, 59, 60, 68];
+    private static readonly HashSet<int> Opcodes = [1, 2, 3, 4, 5, 6, 7, 8, 10, 13, 15, 18, 19, 20, 21, 22, 24, 25, 26, 27, 32, 36, 48, 49, 50, 53, 56, 57, 58, 59, 60, 68, 69, 72];
     private readonly byte[] _bytes;
     private readonly List<Field> _fields;
     private readonly string[] _strings;

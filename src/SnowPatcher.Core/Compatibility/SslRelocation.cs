@@ -304,6 +304,12 @@ internal sealed partial class SslModule
     private string ConstantIdentity(List<Field> value)
     {
         var kind = One(value, 1, 0).Integer;
+        if (kind == 6)
+        {
+            // Opaque callback values cannot be relocated across shared-table changes.
+            return "opaque:" + ContextHash() + ":" +
+                Convert.ToBase64String(value.SelectMany(f => f.Encoded).ToArray());
+        }
         var operand = kind switch
         {
             1 => 2,
@@ -371,7 +377,7 @@ internal sealed partial class SslModule
                 throw new CheckFailure("unsupported", $"Opcode {op} needs a relocation adapter.");
             }
 
-            if (op is 30 or 43 or 63 or 65 && arg != 0)
+            if (op is 21 or 30 or 43 or 56 or 63 or 65 or 69 or 72 && arg != 0)
             {
                 throw new CheckFailure("unsupported", "Unsupported scalar/array instruction flags.");
             }
@@ -379,7 +385,7 @@ internal sealed partial class SslModule
             var identity = op switch
             {
                 10 or 13 or 14 or 60 => SlotContract(arg),
-                6 or 53 => "c:" + ConstantName(definition, arg),
+                6 or 15 or 20 or 53 or 57 or 58 => "c:" + ConstantName(definition, arg),
                 8 => "g:" + B64(GlobalName(arg)),
                 _ => "n:" + arg.ToString(CultureInfo.InvariantCulture)
             };

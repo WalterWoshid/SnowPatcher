@@ -9,6 +9,43 @@ internal sealed record PortableRead(PackageTarget Target, string Kind, string[] 
 internal static class PortablePackage
 {
     private static readonly HashSet<int> MemberOps = [10, 13, 14, 60];
+
+    internal static IReadOnlySet<(int Op, int Value)> BoundReferences(PackageManifest manifest, PackageOperation operation)
+    {
+        var references = new HashSet<(int Op, int Value)>();
+        if (manifest.Relocations is not { } recipe)
+        {
+            return references;
+        }
+
+        // Bind has already checked these named fields and method signatures.
+        foreach (var binding in recipe.GetProperty("operands").EnumerateArray())
+        {
+            if (binding.GetProperty("operation").GetString() != operation.Id ||
+                binding.GetProperty("kind").GetString() is not ("member" or "function" or "global"))
+            {
+                continue;
+            }
+
+            var path = binding.GetProperty("path").EnumerateArray().ToArray();
+            if (path.Length != 5 || path[0].GetString() != "edits" ||
+                path[2].GetString() != "code" || path[4].GetString() != "arg")
+            {
+                continue;
+            }
+
+            var row = operation.Definition.GetProperty("edits")[path[1].GetInt32()]
+                .GetProperty("code")[path[3].GetInt32()];
+            var op = row.GetProperty("op").GetInt32();
+            if (op is 8 or 10 or 13)
+            {
+                references.Add((op, row.GetProperty("arg").GetInt32()));
+            }
+        }
+
+        return references;
+    }
+
     internal static void Validate(PackageManifest manifest)
     {
         if (manifest.Relocations is not { } recipe)
@@ -106,7 +143,12 @@ internal static class PortablePackage
             }
             void Require(int op, object[] path, bool constants)
             {
-                if (MemberOps.Contains(op))
+                if (op == 4 && covered.ContainsKey(operation.Id + ":" + JsonSerializer.Serialize(path)))
+                {
+                    // Callback construction pushes a dispatch slot as an integer.
+                    Need(path, "member");
+                }
+                else if (MemberOps.Contains(op))
                 {
                     Need(path, op == 13 ? "call" : "member");
                 }
@@ -114,7 +156,7 @@ internal static class PortablePackage
                 {
                     Need(path, "global");
                 }
-                else if (constants && op is 6 or 53)
+                else if (constants && op is 6 or 15 or 20 or 53 or 57 or 58)
                 {
                     Need(path, "constant");
                 }

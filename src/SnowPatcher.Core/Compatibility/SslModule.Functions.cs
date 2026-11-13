@@ -7,7 +7,7 @@ namespace SnowPatcher.Core.Compatibility;
 
 internal sealed partial class SslModule
 {
-    public FunctionPreview Preview(JsonElement operation, bool guards, CancellationToken cancellationToken = default)
+    public FunctionPreview Preview(JsonElement operation, bool guards, IReadOnlySet<(int Op, int Value)>? boundReferences = null, CancellationToken cancellationToken = default)
     {
         using var context = new MemoryStream();
         foreach (var field in _fields.Where(f => f.Number != 8))
@@ -84,9 +84,9 @@ internal sealed partial class SslModule
                 throw new CheckFailure("unsupported", $"Opcode {instruction.Item1} needs an adapter before this function can be checked.");
             }
 
-            if (instruction.Item1 == 68 && instruction.Item2 != 0)
+            if (instruction.Item1 is 21 or 56 or 68 or 69 or 72 && instruction.Item2 != 0)
             {
-                throw new CheckFailure("unsupported", "Unsupported indexed-access flags.");
+                throw new CheckFailure("unsupported", "Unsupported instruction operand flags.");
             }
 
             return instruction;
@@ -268,7 +268,8 @@ internal sealed partial class SslModule
                 }
 
                 var value = Int32(arg);
-                if (op is 1 or 8 or 10 or 13 or 18 or 19 or 60 && !code.Contains((op, value)))
+                if (op is 1 or 8 or 10 or 13 or 18 or 19 or 60 && !code.Contains((op, value)) &&
+                    !(op is 8 or 10 or 13 && boundReferences?.Contains((op, value)) == true))
                 {
                     throw new CheckFailure("unsupported", "The edit uses a frame size or reference not already used by this function. It needs a more complete VM adapter.");
                 }
@@ -278,7 +279,7 @@ internal sealed partial class SslModule
                     throw new CheckFailure("unsupported", "The edit requires a local slot not already used by this function.");
                 }
 
-                if (op is 6 or 53 && (value < 0 || value >= bodyFields.Count(f => f.Number == 4)))
+                if (op is 6 or 15 or 20 or 53 or 57 or 58 && (value < 0 || value >= bodyFields.Count(f => f.Number == 4)))
                 {
                     throw new CheckFailure("unsupported", "The edit uses a missing function constant.");
                 }
@@ -288,12 +289,12 @@ internal sealed partial class SslModule
                     throw new CheckFailure("unsupported", "Invalid boolean instruction operand.");
                 }
 
-                if (op is 2 or 3 or 27 or 32 or 36 or 68 && value != 0)
+                if (op is 2 or 3 or 21 or 27 or 32 or 36 or 56 or 68 or 69 or 72 && value != 0)
                 {
                     throw new CheckFailure("unsupported", "An instruction uses unsupported operand flags.");
                 }
 
-                if (op is 48 or 49 or 50 && !code.Contains((op, value)))
+                if (op is 48 or 49 or 50 && !code.Contains((op, value)) && !(op == 48 && value is 7 or 8))
                 {
                     throw new CheckFailure("unsupported", "The edit introduces comparison flags not already used by this function.");
                 }

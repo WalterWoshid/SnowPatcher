@@ -61,6 +61,10 @@ function Get-SnowPortableConstant($Report, $Method, [int]$Index) {
         3 { $f=Read-SnowFields ([Convert]::FromBase64String($c.Fields)); return 'f:'+([BitConverter]::ToString((Get-SnowField $f 4))).Replace('-','') }
         4 { return 's:'+(ConvertTo-SnowB64 $c.Value) }
         5 { return 't:'+(ConvertTo-SnowB64 $c.Value) }
+        6 {
+            # Preserve opaque callback constants only while every shared table is unchanged.
+            return 'opaque:'+$Report.ContextSha256+':'+$c.Fields
+        }
         default { throw "Constant kind $($c.Kind) needs a relocation adapter." }
     }
 }
@@ -74,8 +78,8 @@ function Get-SnowPortableFunctionHash($Report, $Method) {
     $lines.Add('flags:'+[string]$flags[0].Value)
     foreach($i in $Method.Instructions) {
         $op=[int]$i.Opcode; $arg=[int]$i.Operand
-        if($op -notin @(1,2,3,4,5,6,7,8,10,13,14,18,19,22,24,25,26,27,30,32,33,36,37,40,43,48,49,50,53,59,60,63,65,68,71)){throw "Opcode $op needs a relocation adapter."}
-        if($op -in @(30,43,63,65) -and $arg -ne 0){throw "Unsupported scalar/array instruction flags."}
+        if($op -notin @(1,2,3,4,5,6,7,8,10,13,14,15,18,19,20,21,22,24,25,26,27,30,32,33,36,37,40,43,48,49,50,53,56,57,58,59,60,63,65,68,69,71,72)){throw "Opcode $op needs a relocation adapter."}
+        if($op -in @(21,30,43,56,63,65,69,72) -and $arg -ne 0){throw "Unsupported scalar/array instruction flags."}
         if($op -in @(10,13,14,60)) {
             $names=@($Report.References|Where-Object {$_.Kind -eq 'member' -and $_.Slot -eq $arg}|ForEach-Object Name|Sort-Object -CaseSensitive -Unique)
             $functionNames=@($Report.References|Where-Object {$_.Kind -eq 'function' -and $_.Slot -eq $arg}|ForEach-Object Name|Sort-Object -CaseSensitive -Unique)
@@ -83,7 +87,7 @@ function Get-SnowPortableFunctionHash($Report, $Method) {
             $contracts=[string[]]@(@($names|ForEach-Object { $_+'='+(Get-SnowPortableMember $Report $_).contract })+@($functionNames|ForEach-Object {'global:'+$_+'='+(Get-SnowPortableGlobalFunction $Report $_).contract}))
             [Array]::Sort($contracts,[StringComparer]::Ordinal)
             $value='m:'+($contracts -join ';')
-        } elseif($op -in @(6,53)) { $value='c:'+(Get-SnowPortableConstant $Report $Method $arg) }
+        } elseif($op -in @(6,15,20,53,57,58)) { $value='c:'+(Get-SnowPortableConstant $Report $Method $arg) }
         elseif($op -eq 8){$global=@($Report.References|Where-Object {$_.Kind -eq 'global' -and $_.Index -eq $arg});if($global.Count -ne 1){throw 'Invalid global.'};$value='g:'+(ConvertTo-SnowB64 $global[0].Name)}
         else { $value='n:'+[string]$arg }
         $lines.Add([string]$op+':'+$value)
@@ -172,7 +176,7 @@ function Add-SnowPortableCode($SourceCode,$Rows,$Prefix,$Operation,[bool]$Functi
     for($i=0;$i -lt $Rows.Count;$i++) {
         $row=$Rows[$i];if($row -is [array]){$op=[int]$row[0];$arg=$row[1];$path=@($Prefix)+@($i,1)}
         else{if($row.Contains('label')){continue};$op=[int]$row.op;$arg=$row.arg;$path=@($Prefix)+@($i,'arg')}
-        if($op -in @(10,13,14,60)) {
+        if($op -in @(10,13,14,60) -or ($op -eq 4 -and $lines[$i] -cmatch '^\S+\s+member:')) {
             $target=$Operation.target
             if($op -eq 13 -and $lines[$i] -cmatch '^\S+\s+function:(.+)$') { Add-SnowPortableBinding $Operation $path 'function' $target $Matches[1];continue }
             if($lines[$i] -cmatch '^\S+\s+member:([^/\s]+)/(.+)$'){$target=Get-SnowAuthorTarget $Matches[1] $script:SnowAuthorSource $script:SnowAuthorVariant;$name=$Matches[2]}
@@ -183,7 +187,7 @@ function Add-SnowPortableCode($SourceCode,$Rows,$Prefix,$Operation,[bool]$Functi
             }
             Add-SnowPortableBinding $Operation $path 'member' $target $name
         } elseif($op -eq 8){$name=@($report.References|Where-Object {$_.Kind -eq 'global' -and $_.Index -eq $arg})[0].Name;Add-SnowPortableBinding $Operation $path 'global' $Operation.target $name}
-        elseif($FunctionConstants -and $op -in @(6,53)) {
+        elseif($FunctionConstants -and $op -in @(6,15,20,53,57,58)) {
             $method=@($report.Functions|Where-Object {$_.Class -ceq $Operation.function.class -and $_.Name -ceq $Operation.function.name})[0]
             Add-SnowPortableBinding $Operation $path 'constant' $Operation.target (Get-SnowPortableConstant $report $method ([int]$arg))
         }

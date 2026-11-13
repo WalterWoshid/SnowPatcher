@@ -39,8 +39,6 @@ internal sealed partial class SslModule
         var symbols = _fields.Where(f => f.Number == 5 && f.Wire == 2).Select(f => Fields(f.Data)).ToArray();
         var referenceTable = One(_fields, 4, 2);
         var references = Fields(referenceTable.Data);
-        var nativeTypes = references.Where(f => f.Number == 1 && f.Wire == 2)
-            .Select(f => StringAt(One(Fields(f.Data), 1, 0).Integer)).ToArray();
         var methodReferences = references.Where(f => f.Number == 4 && f.Wire == 2).Select(f => Fields(f.Data)).Where(r =>
             One(r, 1, 0).Integer == 2 && StringAt(One(r, 2, 0).Integer) == definition.GetProperty("templateMember").GetString()).ToArray();
         if (methodReferences.Length != 1 || methodReferences[0].Any(f => f.Number is < 1 or > 5 || f.Wire != 0))
@@ -92,10 +90,10 @@ internal sealed partial class SslModule
             Data(changedClass, 3, member.ToArray());
             var signature = method.GetProperty("signature");
             using var type = new MemoryStream();
-            Integer(type, 1, Builtin(signature.GetProperty("returns").GetString()!));
+            Integer(type, 1, checked((ulong)ResolveType(signature.GetProperty("returns").GetString()!)));
             foreach (var argument in signature.GetProperty("arguments").EnumerateArray())
             {
-                Integer(type, 2, Builtin(argument.GetString()!));
+                Integer(type, 2, checked((ulong)ResolveType(argument.GetString()!)));
             }
 
             var signatureKey = Convert.ToHexString(type.ToArray());
@@ -205,17 +203,6 @@ internal sealed partial class SslModule
             strings.Add(value);
             return strings.Count - 1;
         }
-        ulong Builtin(string name)
-        {
-            var index = Array.IndexOf(nativeTypes, name);
-            var found = Enumerable.Range(0, symbols.Length).Where(i => One(symbols[i], 1, 0).Integer == 3 && One(symbols[i], 2, 0).Integer == (ulong)index).ToArray();
-            if (index < 0 || found.Length != 1)
-            {
-                throw new CheckFailure("unsupported", "The method's built-in signature type is missing or ambiguous.");
-            }
-
-            return (ulong)found[0];
-        }
     }
 
     private static byte[] Assemble(JsonElement definition, int constantCount, int argumentCount, CancellationToken token)
@@ -259,9 +246,13 @@ internal sealed partial class SslModule
                 value = arg.GetInt32();
             }
 
-            if (value is < -8388608 or > 8388607 || op is 1 or 4 or 8 or 10 or 13 or 14 or 60 && value < 0 ||
-                op is 7 or 59 && (value < -locals || value >= argumentCount) || op is 6 or 53 && (value < 0 || value >= constantCount) ||
-                op is 18 or 19 && value != argumentCount || op == 5 && value is not (0 or 1) || op is 2 or 3 or 27 or 32 or 33 or 36 or 37 or 40 or 68 or 71 && value != 0)
+            if (value is < -8388608 or > 8388607 ||
+                op is 1 or 4 or 8 or 10 or 13 or 14 or 60 && value < 0 ||
+                op is 7 or 59 && (value < -locals || value >= argumentCount) ||
+                op is 6 or 15 or 20 or 53 or 57 or 58 && (value < 0 || value >= constantCount) ||
+                op is 18 or 19 && value != argumentCount ||
+                op == 5 && value is not (0 or 1) ||
+                op is 2 or 3 or 21 or 27 or 32 or 33 or 36 or 37 or 40 or 56 or 68 or 69 or 71 or 72 && value != 0)
             {
                 throw new CheckFailure("unsupported", "The method has an unsupported frame, constant or instruction operand.");
             }

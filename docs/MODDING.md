@@ -248,6 +248,14 @@ New methods declare constants as an object, for example `"scale": { "float":
 Type names must resolve in the target module; another module's type indices
 cannot be copied into it. Missing or ambiguous names stop the build.
 
+Inherited method signatures can also use existing script types, such as
+`ScreenState` and `NavButtonDesc`. Callback instructions use `bind_callback`;
+`push_int member:Class::Method` records a guarded dispatch slot. Opaque callback
+constants require unchanged shared module tables until their layout is decoded.
+Function edits can use additional named fields and methods after their contracts
+are checked. Unbound numeric references must already occur in the original function.
+`invoke_callback` and the undecoded `op_56` currently accept only operand `0`.
+
 `locals` assigns negative slots in declaration order. `parameters` assigns slots
 starting at 1; `slot:this` is slot 0. `reserve locals` and `return arguments`
 expand to the declared local count and signature argument count including `this`.

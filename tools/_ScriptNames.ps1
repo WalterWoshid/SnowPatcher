@@ -4,16 +4,16 @@ function Get-SnowOpcodes {
     # Names describe observed operations, not an official VM specification.
     $names = @{
         1='reserve'; 2='pop'; 3='push_null'; 4='push_int'; 5='push_bool'; 6='push_constant'; 7='load_slot'
-        8='push_global'; 10='get_member'; 13='call'; 14='call_type_member'; 18='return_value'; 19='return'
+        8='push_global'; 10='get_member'; 13='call'; 14='call_type_member'; 15='invoke_event'; 18='return_value'; 19='return'; 20='bind_callback'; 21='invoke_callback'
         22='jump_if_false_pop'; 24='jump_if_false'; 25='jump_if_true'; 26='jump'; 27='not'
         32='add_int'; 33='add_float'; 36='subtract_int'; 37='subtract_float'; 40='multiply_float'
-        48='op_48'; 49='op_49'; 50='op_50'; 53='cast'; 59='store_slot'; 60='set_member'
-        68='get_index'; 71='get_index_or_default'
+        48='op_48'; 49='op_49'; 50='op_50'; 53='cast'; 56='op_56'; 57='new_template'; 58='construct_template'; 59='store_slot'; 60='set_member'
+        68='get_index'; 69='set_index'; 71='get_index_or_default'; 72='dict_count'
     }
     $result = @{}
     foreach ($number in $names.Keys) {
         $operand = if ($number -in @(10,13,14,60)) { 'member' }
-            elseif ($number -in @(6,53)) { 'constant' }
+            elseif ($number -in @(6,15,20,53,57,58)) { 'constant' }
             elseif ($number -eq 8) { 'global' }
             elseif ($number -in @(7,59)) { 'slot' }
             elseif ($number -in @(22,24,25,26)) { 'label' }
@@ -218,12 +218,15 @@ function ConvertTo-SnowInstruction($Line, $Report, $Constants = @{}, $Slots = @{
         $arg = [int]$Slots[$key]
     } elseif ($op -eq 13 -and $operand.StartsWith('function:',[StringComparison]::Ordinal)) {
         $arg = Resolve-SnowReference $Report $operand 'function'
+    } elseif ($op -eq 4 -and $operand.StartsWith('member:', [StringComparison]::Ordinal)) {
+        $arg = Resolve-SnowReference $Report $operand 'member'
     } elseif ($operand.StartsWith($kind + ':', [StringComparison]::Ordinal) -and $kind -in @('member','global')) {
         $arg = Resolve-SnowReference $Report $operand $kind
     } elseif ($op -eq 5 -and $operand -in @('true','false')) { $arg = [int]($operand -eq 'true') }
     elseif ($operand -match '^-?[0-9]+$') { $arg = [int]::Parse($operand, [Globalization.CultureInfo]::InvariantCulture) }
     else { throw "Invalid $kind operand '$operand' for $name." }
     if ($arg -is [int] -and ($arg -lt -8388608 -or $arg -gt 8388607)) { throw 'Instruction operand exceeds the VM encoding range.' }
+    if ($op -in @(21,56,69,72) -and $arg -ne 0) { throw "Instruction '$name' only supports operand 0." }
     if ($Match) { return ,@($op,$arg) }
     return @{ op=$op; arg=$arg }
 }
