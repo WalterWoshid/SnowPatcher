@@ -1,0 +1,17 @@
+{
+  "authoringVersion": 1,
+  "id": "example.authoring",
+  "name": "Authoring example",
+  "version": "1.0.0",
+  "authors": ["SnowPatcher contributors"],
+  "description": "Adds an unused text file to demonstrate packaging.",
+  "targets": {
+    "note": {
+      "file": "preload/paks/client/initial.pak",
+      "members": [{ "format": "zip", "name": "[snowpatcher]/example.txt" }]
+    }
+  },
+  "operations": [
+    { "id": "note", "type": "resource.add", "target": "note", "payload": "payloads/example.txt" }
+  ]
+}

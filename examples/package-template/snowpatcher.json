@@ -1,0 +1,30 @@
+{
+  "$schema": "../../formats/package.schema.json",
+  "formatVersion": 1,
+  "id": "example.package-format",
+  "name": "Package format example",
+  "version": "0.1.0",
+  "authors": ["SnowPatcher contributors"],
+  "description": "Packaging example only. Adds an unused author-written text resource; no gameplay feature.",
+  "game": "snowrunner",
+  "files": [
+    {
+      "path": "payloads/example.txt",
+      "sha256": "b026805cecd8237ce6bdc4b8daf6d207262c92c5f627d9215b51df5105573920",
+      "size": 29
+    }
+  ],
+  "operations": [
+    {
+      "id": "add-example-note",
+      "type": "resource.add",
+      "target": {
+        "file": "preload/paks/client/initial.pak",
+        "members": [
+          { "format": "zip", "name": "[snowpatcher]/example.txt" }
+        ]
+      },
+      "payload": "payloads/example.txt"
+    }
+  ]
+}
