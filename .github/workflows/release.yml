@@ -1,0 +1,108 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag
+        required: true
+        default: v1.0.0
+permissions:
+  contents: read
+concurrency:
+  group: snowpatcher-release
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.repository == 'WalterWoshid/SnowPatcher'
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-x64
+    runs-on: ${{ matrix.os }}
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Check version and source
+        shell: pwsh
+        run: |
+          if ($env:RELEASE_TAG -cnotmatch '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') { throw 'Use a vMAJOR.MINOR.PATCH tag.' }
+          git merge-base --is-ancestor HEAD origin/main
+          if ($LASTEXITCODE) { throw 'Release tags must point to reviewed main-branch code.' }
+          [xml]$props = Get-Content Directory.Build.props -Raw
+          if ('v' + $props.Project.PropertyGroup.Version -cne $env:RELEASE_TAG) { throw 'The tag must match Directory.Build.props.' }
+          "RELEASE_VERSION=$($env:RELEASE_TAG.Substring(1))" >> $env:GITHUB_ENV
+      - name: Publish desktop files
+        env:
+          SNOWPATCHER_MODIO_API_KEY: ${{ secrets.SNOWPATCHER_MODIO_API_KEY }}
+        run: dotnet publish src/SnowPatcher.App --configuration Release --runtime ${{ matrix.rid }} --self-contained true -p:DebugType=None -p:DebugSymbols=false -o artifacts/app
+      - name: Package
+        shell: pwsh
+        env:
+          RUNTIME: ${{ matrix.rid }}
+        run: |
+          Copy-Item README.md artifacts/app/README.md
+          New-Item artifacts/release -ItemType Directory -Force | Out-Null
+          $name = "SnowPatcher-$env:RELEASE_VERSION-$env:RUNTIME"
+          if ($env:RUNTIME -eq 'win-x64') {
+            Compress-Archive -Path artifacts/app/* -DestinationPath "artifacts/release/$name.zip"
+          } else {
+            tar -czf "artifacts/release/$name.tar.gz" -C artifacts/app .
+            if ($LASTEXITCODE) { throw 'Archive creation failed.' }
+          }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ matrix.rid }}
+          path: artifacts/release/*
+          if-no-files-found: error
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: artifacts/release
+          merge-multiple: true
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s\n' 'Extract the Windows ZIP and run SnowPatcher.exe. No separate .NET installation is needed.' '' 'The Linux build is provided without an in-game test.' > artifacts/notes.md
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" artifacts/release/* --title "SnowPatcher ${RELEASE_TAG#v}" --notes-file artifacts/notes.md
+          else
+            for file in artifacts/release/*; do
+              name=$(basename "$file")
+              if ! gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | grep -Fxq "$name"; then
+                gh release upload "$RELEASE_TAG" "$file"
+              fi
+            done
+            gh release download "$RELEASE_TAG" --pattern 'SnowPatcher-*' --dir artifacts/release --clobber
+          fi
+      - name: Publish verified Windows download to mod.io
+        env:
+          MODIO_TOKEN: ${{ secrets.MODIO_TOKEN }}
+          MODIO_MOD_ID: ${{ vars.MODIO_MOD_ID }}
+        run: |
+          python -c 'import json,os; from pathlib import Path; Path("artifacts/metadata.json").write_text(json.dumps({"format":"snowpatcher-application","source":"https://github.com/WalterWoshid/SnowPatcher","tag":os.environ["RELEASE_TAG"]}))'
+          python scripts/publish_modio.py --mod-id "$MODIO_MOD_ID" --archive "artifacts/release/SnowPatcher-${RELEASE_TAG#v}-win-x64.zip" --version "${RELEASE_TAG#v}" --metadata artifacts/metadata.json --changelog artifacts/notes.md
