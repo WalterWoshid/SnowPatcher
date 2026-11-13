@@ -42,6 +42,11 @@ def trusted_host(host):
     return host in ('g-306.modapi.io', 'api.mod.io') or host.endswith(('.modcdn.io', '.mod.io'))
 
 
+def windows_file_id(listing):
+    windows = next((p for p in listing.get('platforms', []) if p['platform'] == 'windows'), None)
+    return windows.get('modfile_live') if windows else (listing.get('modfile') or {}).get('id')
+
+
 class DownloadRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, url):
         parsed = urllib.parse.urlsplit(url)
@@ -81,7 +86,7 @@ def publish(mod_id, archive, version, metadata, changelog):
         item = next((f for f in existing if (f.get('filehash') or {}).get('md5') == md5), None)
         if item is None:
             raise RuntimeError('That version already contains different bytes. Use a new version.')
-        if (listing.get('modfile') or {}).get('id') != item['id']:
+        if windows_file_id(listing) != item['id']:
             raise RuntimeError('That release exists but is not live. Review it before reactivating it.')
     else:
         boundary = 'SnowPatcher' + uuid.uuid4().hex
@@ -101,7 +106,11 @@ def publish(mod_id, archive, version, metadata, changelog):
     deadline = time.monotonic() + 300
     while True:
         item = request('GET', f'/games/306/mods/{mod_id}/files/{item["id"]}')
-        if item.get('virus_positive'):
+        verdict = item.get('virus_positive', 0)
+        # mod.io uses 2 for potentially harmful files such as EXE archives.
+        # Desktop releases retain that warning; detected threats always stop publication.
+        executable_warning = verdict == 2 and metadata.get('format') == 'snowpatcher-application'
+        if verdict and not executable_warning:
             raise RuntimeError('mod.io flagged the uploaded file. Review its scan result.')
         windows = next((p for p in item.get('platforms', []) if p['platform'] == 'windows'), None)
         if windows and windows['status'] in (2, 3):
@@ -112,11 +121,13 @@ def publish(mod_id, archive, version, metadata, changelog):
             raise RuntimeError('The upload is still awaiting mod.io approval. Rerun to verify it.')
         time.sleep(10)
     live = request('GET', f'/games/306/mods/{mod_id}')
-    if (live.get('modfile') or {}).get('id') != item['id']:
+    if windows_file_id(live) != item['id']:
         raise RuntimeError('The verified file is not the live listing download')
     verify_download(item, sha256)
     return {'mod_id': mod_id, 'file_id': item['id'], 'version': version, 'sha256': sha256,
-            'url': live['profile_url'], 'approved': True}
+            'url': live['profile_url'], 'approved': True,
+            'virus_status': item.get('virus_status'), 'virus_positive': item.get('virus_positive'),
+            'executable_warning': executable_warning}
 
 
 def main():
