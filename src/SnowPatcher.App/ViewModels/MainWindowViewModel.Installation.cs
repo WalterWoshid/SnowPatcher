@@ -97,43 +97,49 @@ public sealed partial class MainWindowViewModel
 
         try
         {
-            var result = await Task.Run(() => GameInstallationVerifier.InspectAsync(installation, cancellation.Token), cancellation.Token);
-            if (selectionVersion != _folderSelectionVersion || cancellation.IsCancellationRequested)
+            InstallationInspection result;
+            await _gameCheckLock.WaitAsync(cancellation.Token);
+            try
             {
-                return;
-            }
-
-            Inspection = result;
-            ShowBuild(result);
-            SetStatus(result.State == FileVerificationState.UnableToVerify ? result.Detail : "");
-
-            if (result.BuildId is not null)
-            {
-                _isBackingUp = true;
-                RefreshBackupActions();
-                SetStatus("Saving backup...");
-                try
+                result = await Task.Run(() => GameInstallationVerifier.InspectAsync(installation, cancellation.Token), cancellation.Token);
+                if (selectionVersion != _folderSelectionVersion || cancellation.IsCancellationRequested)
                 {
-                    await Task.Run(() => _backupStore.EnsureBackupAsync(installation, result.BuildId, cancellation.Token), cancellation.Token);
-                    var backups = await Task.Run(() => _backupStore.ListAsync(installation, cancellation.Token), cancellation.Token);
-                    if (selectionVersion != _folderSelectionVersion || cancellation.IsCancellationRequested)
-                    {
-                        return;
-                    }
-
-                    _hasBackups = backups.Count > 0;
-                    SetStatus(result.State == FileVerificationState.UnableToVerify ? result.Detail : "");
+                    return;
                 }
-                catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or FormatException)
+
+                Inspection = result;
+                ShowBuild(result);
+                SetStatus(result.State == FileVerificationState.UnableToVerify ? result.Detail : "");
+
+                if (result.BuildId is not null)
                 {
-                    SetStatus($"Could not save a backup: {error.Message}");
-                }
-                finally
-                {
-                    _isBackingUp = false;
+                    _isBackingUp = true;
                     RefreshBackupActions();
+                    SetStatus("Saving backup...");
+                    try
+                    {
+                        await Task.Run(() => _backupStore.EnsureBackupAsync(installation, result.BuildId, cancellation.Token), cancellation.Token);
+                        var backups = await Task.Run(() => _backupStore.ListAsync(installation, cancellation.Token), cancellation.Token);
+                        if (selectionVersion != _folderSelectionVersion || cancellation.IsCancellationRequested)
+                        {
+                            return;
+                        }
+
+                        _hasBackups = backups.Count > 0;
+                        SetStatus(result.State == FileVerificationState.UnableToVerify ? result.Detail : "");
+                    }
+                    catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or FormatException)
+                    {
+                        SetStatus($"Could not save a backup: {error.Message}");
+                    }
+                    finally
+                    {
+                        _isBackingUp = false;
+                        RefreshBackupActions();
+                    }
                 }
             }
+            finally { _gameCheckLock.Release(); }
 
             RequestCompatibilityCheck();
             if (result.BuildId is not null && result.Store == GameStore.Steam)

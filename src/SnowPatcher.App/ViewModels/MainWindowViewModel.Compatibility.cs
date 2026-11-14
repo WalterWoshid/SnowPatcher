@@ -54,8 +54,8 @@ public sealed partial class MainWindowViewModel
             }
 
             SetCompatibilitySummary("Checking enabled mods...");
-            var patchCheck = await _patchInstaller.CheckAsync(new GameInstallation(GameFolder),
-                selected.Select(m => new CompatibilityInput(m.ToRecord().Id, m.Archive)).ToArray(), token);
+            var patchCheck = await RunGameOperationAsync(() => _patchInstaller.CheckAsync(new GameInstallation(GameFolder),
+                selected.Select(m => new CompatibilityInput(m.ToRecord().Id, m.Archive)).ToArray(), token), token);
             if (version != _compatibilityVersion || token.IsCancellationRequested)
             {
                 return;
@@ -143,7 +143,7 @@ public sealed partial class MainWindowViewModel
         string message;
         try
         {
-            var result = await _patchInstaller.ApplyAsync(new GameInstallation(GameFolder), selected, new Progress<string>(SetStatus));
+            var result = await RunGameOperationAsync(() => _patchInstaller.ApplyAsync(new GameInstallation(GameFolder), selected, new Progress<string>(SetStatus)));
             message = result.Recovered ? "Recovery completed." : result.Changed ? selected.Length == 0 ? "Mods removed." : "Mods applied." : "No changes to apply.";
             _hasBackups = (await _backupStore.ListAsync(new GameInstallation(GameFolder))).Count > 0;
         }

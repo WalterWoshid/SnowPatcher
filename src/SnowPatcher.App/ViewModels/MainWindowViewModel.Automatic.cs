@@ -82,7 +82,7 @@ public sealed partial class MainWindowViewModel
 
                 var inputs = Mods.Where(m => m.IsEnabled).Select(m => new CompatibilityInput(m.ToRecord().Id,
                     downloaded.TryGetValue(m, out var update) ? update.Archive : m.Archive)).ToArray();
-                var check = await _patchInstaller.CheckAsync(new GameInstallation(GameFolder), inputs, token);
+                var check = await RunGameOperationAsync(() => _patchInstaller.CheckAsync(new GameInstallation(GameFolder), inputs, token), token);
                 if (check.NeedsRecovery || check.Report.HasIssues || check.BlockReason is not null)
                 {
                     var detail = check.Report.Mods.FirstOrDefault(m => !m.Issues.IsEmpty)?.Detail ?? check.BlockReason ?? "A mod update conflicts with the current selection.";

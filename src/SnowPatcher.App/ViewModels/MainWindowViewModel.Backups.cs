@@ -40,7 +40,7 @@ public sealed partial class MainWindowViewModel
         try
         {
             var installation = new GameInstallation(GameFolder);
-            return await Task.Run(() => _backupStore.RestoreAsync(installation, backup));
+            return await RunGameOperationAsync(() => Task.Run(() => _backupStore.RestoreAsync(installation, backup)));
         }
         finally
         {

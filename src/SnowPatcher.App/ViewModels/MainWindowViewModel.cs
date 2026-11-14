@@ -24,6 +24,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IAsyncDispos
     private bool _isBackingUp;
     private bool _isRestoring;
     private readonly SemaphoreSlim _archiveImportLock = new(1, 1);
+    private readonly SemaphoreSlim _gameCheckLock = new(1, 1);
     private readonly CancellationTokenSource _archiveImportCancellation = new();
     private readonly ModioClient _modio;
     private readonly ModLibraryStore _library;
@@ -95,6 +96,17 @@ public sealed partial class MainWindowViewModel : ObservableObject, IAsyncDispos
 
     public ValueTask DisposeAsync() => new(CloseAsync());
 
+    private async Task<T> RunGameOperationAsync<T>(Func<Task<T>> operation, CancellationToken token = default)
+    {
+        await _gameCheckLock.WaitAsync(token);
+        try
+        {
+            token.ThrowIfCancellationRequested();
+            return await operation();
+        }
+        finally { _gameCheckLock.Release(); }
+    }
+
     private async Task CloseCoreAsync()
     {
         _isClosing = true;
@@ -134,6 +146,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IAsyncDispos
         }
         finally
         {
+            await _gameCheckLock.WaitAsync();
+            _gameCheckLock.Release();
             await _archiveImportLock.WaitAsync();
             _archiveImportLock.Release();
             _library.Dispose();
