@@ -1,8 +1,7 @@
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Media;
-using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 
 namespace SnowPatcher.App.Services.Desktop;
 
@@ -46,28 +45,7 @@ internal sealed class UnixDesktopIntegration(Action open, Action preferences, Ac
 
     private static WindowIcon CreateIcon()
     {
-        var glyph = new Border
-        {
-            Width = 32,
-            Height = 32,
-            Background = Brushes.DimGray,
-            Child = new TextBlock
-            {
-                Text = "S",
-                FontSize = 24,
-                FontWeight = FontWeight.Bold,
-                Foreground = Brushes.White,
-                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
-            }
-        };
-        glyph.Measure(new Size(32, 32));
-        glyph.Arrange(new Rect(0, 0, 32, 32));
-        using var bitmap = new RenderTargetBitmap(new PixelSize(32, 32));
-        bitmap.Render(glyph);
-        using var stream = new MemoryStream();
-        bitmap.Save(stream, new PngBitmapEncoderOptions());
-        stream.Position = 0;
+        using var stream = AssetLoader.Open(new Uri("avares://SnowPatcher/Assets/SnowPatcher.ico"));
         return new WindowIcon(stream);
     }
 
@@ -78,7 +56,7 @@ internal sealed class UnixDesktopIntegration(Action open, Action preferences, Ac
             return;
         }
         var start = new ProcessStartInfo("notify-send") { UseShellExecute = false, CreateNoWindow = true };
-        foreach (var argument in new[] { "--app-name=SnowPatcher", "--icon=applications-system", "--hint=string:suppress-sound:true", "--", title, message })
+        foreach (var argument in new[] { "--app-name=SnowPatcher", "--icon=" + Path.Combine(AppContext.BaseDirectory, "Assets", "SnowPatcher.png"), "--hint=string:suppress-sound:true", "--", title, message })
         {
             start.ArgumentList.Add(argument);
         }

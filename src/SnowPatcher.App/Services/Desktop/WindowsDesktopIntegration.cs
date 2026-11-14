@@ -15,6 +15,7 @@ internal sealed partial class WindowsDesktopIntegration : IDesktopIntegration
     private readonly string _className = "SnowPatcher.Tray." + Guid.NewGuid().ToString("N");
     private readonly DispatcherTimer _temporaryIcon = new() { Interval = TimeSpan.FromSeconds(15) };
     private nint _window;
+    private nint _icon;
     private bool _registered;
     private bool _background;
     private uint _taskbarCreated;
@@ -69,6 +70,15 @@ internal sealed partial class WindowsDesktopIntegration : IDesktopIntegration
 
     private void EnsureIcon()
     {
+        if (_icon == 0)
+        {
+            _icon = LoadImage(0, Path.Combine(AppContext.BaseDirectory, "Assets", "SnowPatcher.ico"), 1,
+                GetSystemMetrics(49), GetSystemMetrics(50), 0x10);
+            if (_icon == 0)
+            {
+                throw new Win32Exception(Marshal.GetLastPInvokeError(), "The SnowPatcher tray icon could not be loaded.");
+            }
+        }
         if (_window == 0)
         {
             var type = new WindowClass
@@ -111,7 +121,7 @@ internal sealed partial class WindowsDesktopIntegration : IDesktopIntegration
         Window = _window,
         Id = 1,
         Callback = CallbackMessage,
-        Icon = LoadIcon(0, 32512),
+        Icon = _icon,
         Tip = "SnowPatcher",
         Info = "",
         InfoTitle = ""
@@ -190,6 +200,11 @@ internal sealed partial class WindowsDesktopIntegration : IDesktopIntegration
             _ = DestroyWindow(_window);
             _ = UnregisterClass(_className, GetModuleHandle(null));
             _window = 0;
+        }
+        if (_icon != 0)
+        {
+            _ = DestroyIcon(_icon);
+            _icon = 0;
         }
     }
 

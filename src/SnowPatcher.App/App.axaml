@@ -5,6 +5,7 @@
   <Application.Styles>
     <SimpleTheme />
     <Style Selector="Window">
+      <Setter Property="Icon" Value="avares://SnowPatcher/Assets/SnowPatcher.ico" />
       <Setter Property="FontSize" Value="13" />
       <Setter Property="Background" Value="#F0F0F0" />
     </Style>

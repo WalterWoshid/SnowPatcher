@@ -5,9 +5,15 @@
     <OutputType>WinExe</OutputType>
     <AssemblyName>SnowPatcher</AssemblyName>
     <Product>SnowPatcher</Product>
+    <ApplicationIcon>../../assets/icons/snowpatcher.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <SnowPatcherModioApiKey Condition="'$(SnowPatcherModioApiKey)' == ''">$(SNOWPATCHER_MODIO_API_KEY)</SnowPatcherModioApiKey>
   </PropertyGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="../../assets/icons/snowpatcher.ico" Link="Assets/SnowPatcher.ico" />
+    <Content Include="../../assets/icons/snowpatcher.ico" Link="Assets/SnowPatcher.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../assets/icons/snowpatcher.png" Link="Assets/SnowPatcher.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.6" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
