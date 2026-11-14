@@ -1,10 +1,9 @@
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using SnowPatcher.Core.Packages;
 
 namespace SnowPatcher.Core.Compatibility;
 
-internal static class SelectionComposer
+internal static partial class SelectionComposer
 {
     internal static IReadOnlyDictionary<string, byte[]?> Compose(GameResources game, IReadOnlyList<ModPackage> packages, CancellationToken token)
     {
@@ -17,6 +16,11 @@ internal static class SelectionComposer
                 token.ThrowIfCancellationRequested();
                 try
                 {
+                    if (operation.Type == "sslb.module.extend")
+                    {
+                        ApplyExtension(game, view, groups, package, operation, token);
+                        continue;
+                    }
                     if (operation.Type == "sslb.function.edit")
                     {
                         var current = view.Read(operation.Target) ?? throw new CheckFailure("missing", "The script module is missing.");
@@ -44,10 +48,7 @@ internal static class SelectionComposer
                         }
                         group.BoundReferences.UnionWith(PortablePackage.BoundReferences(package.Manifest, operation));
 
-                        var combined = JsonNode.Parse(group.Definition.GetRawText())!.AsObject();
-                        combined["edits"] = new JsonArray(group.Edits.Select(e => JsonNode.Parse(e.GetRawText())).ToArray());
-                        var preview = new SslModule(group.Module).Preview(JsonSerializer.SerializeToElement(combined), false, group.BoundReferences, token);
-                        view.Write(operation.Target, probe.AdoptFunction(preview.Bytes, definition));
+                        view.Write(operation.Target, group.ApplyTo(current, token));
                     }
                     else
                     {
@@ -92,5 +93,17 @@ internal static class SelectionComposer
     {
         public List<JsonElement> Edits { get; } = [];
         public HashSet<(int Op, int Value)> BoundReferences { get; } = [];
+        public bool ExtensionLayout { get; set; }
+
+        public byte[] ApplyTo(byte[] current, CancellationToken token)
+        {
+            var combined = JsonSerializer.SerializeToElement(new
+            {
+                function = Definition.GetProperty("function"),
+                edits = Edits
+            });
+            var preview = new SslModule(Module).Preview(combined, false, BoundReferences, ExtensionLayout, token);
+            return new SslModule(current).AdoptFunction(preview.Bytes, combined.GetProperty("function"));
+        }
     }
 }

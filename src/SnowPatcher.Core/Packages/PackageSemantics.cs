@@ -77,6 +77,9 @@ internal static partial class PackageSemantics
             }
             switch (operation.Type)
             {
+                case "sslb.module.extend":
+                    ValidateExtension(manifest, operation);
+                    break;
                 case "xml.edit":
                     if (manifest.MinSnowPatcherVersion is null || PackageManifestReader.CompareVersions(manifest.MinSnowPatcherVersion, "1.3.0") < 0)
                     {
@@ -112,6 +115,8 @@ internal static partial class PackageSemantics
                     }
                     break;
             }
+
+            ValidateScriptMinimum(manifest, operation);
         }
 
         Compatibility.PortablePackage.Validate(manifest);

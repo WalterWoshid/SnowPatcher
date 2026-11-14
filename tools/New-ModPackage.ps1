@@ -89,6 +89,16 @@ try {
     if (@($operations | Where-Object type -EQ 'xml.edit').Count -gt 0 -and [version]$minimumVersion -lt [version]'1.3.0') {
         throw 'XML edits need minSnowPatcherVersion 1.3.0 or newer.'
     }
+    if (@($operations | Where-Object type -EQ 'sslb.module.extend').Count -gt 0 -and [version]$minimumVersion -lt [version]'1.4.0') {
+        throw 'Script extensions need minSnowPatcherVersion 1.4.0 or newer.'
+    }
+    $arrayInstructions = @($operations | Where-Object { $_.type -in @('sslb.function.edit','sslb.methods.add') } | ForEach-Object {
+        if ($_.type -eq 'sslb.function.edit') { $_.edits | ForEach-Object { $_.code } }
+        else { $_.methods | ForEach-Object { $_.code } }
+    } | Where-Object { $_.Contains('op') -and $_.op -in @(63,65,66) })
+    if ($arrayInstructions.Count -gt 0 -and [version]$minimumVersion -lt [version]'1.4.0') {
+        throw 'Array instructions need minSnowPatcherVersion 1.4.0 or newer.'
+    }
     $payloadPaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($operation in $operations) {
         if ($operation.Contains('payload')) { [void]$payloadPaths.Add((Get-SnowSafePath $operation.payload)) }

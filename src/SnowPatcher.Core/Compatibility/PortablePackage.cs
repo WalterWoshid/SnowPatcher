@@ -37,7 +37,7 @@ internal static class PortablePackage
             var row = operation.Definition.GetProperty("edits")[path[1].GetInt32()]
                 .GetProperty("code")[path[3].GetInt32()];
             var op = row.GetProperty("op").GetInt32();
-            if (op is 8 or 10 or 13)
+            if (op is 8 or 10 or 13 or 60)
             {
                 references.Add((op, row.GetProperty("arg").GetInt32()));
             }
@@ -82,7 +82,7 @@ internal static class PortablePackage
                 throw new InvalidDataException("A relocation must replace a numeric operand.");
             }
         }
-        foreach (var operation in manifest.Operations.Where(o => o.Type.StartsWith("sslb.", StringComparison.Ordinal)))
+        foreach (var operation in manifest.Operations.Where(o => o.Type is "sslb.function.edit" or "sslb.methods.add"))
         {
             var d = operation.Definition;
             var function = operation.Type == "sslb.function.edit" ? d.GetProperty("function") :
@@ -299,7 +299,7 @@ internal static class PortablePackage
         var operations = package.Manifest.Operations.Select(o =>
         {
             var definition = definitions[o.Id];
-            if (o.Type.StartsWith("sslb.", StringComparison.Ordinal))
+            if (o.Type is "sslb.function.edit" or "sslb.methods.add")
             {
                 var module = Module(o.Target);
                 definition["moduleContextSha256"] = module.ContextHash();

@@ -284,6 +284,14 @@ function ConvertTo-SnowAuthorOperation($Definition, $Source, [string]$Variant) {
         if (-not $Variant) { throw 'A {variant} payload needs a variant target.' }
         $operation.payload = $operation.payload.Replace('{variant}', $Variant)
     }
+    if ($operation.Contains('functionsFile')) {
+        if ($operation.type -ne 'sslb.module.extend' -or $operation.Contains('functions')) { throw 'Use functions or functionsFile on a module extension, not both.' }
+        if ($operation.functionsFile.Contains('{variant}') -and -not $Variant) { throw 'A {variant} functionsFile needs a variant target.' }
+        $path = Get-SnowAuthorFile $script:SnowAuthorRoot $operation.functionsFile.Replace('{variant}', $Variant)
+        $operation.functions = Read-SnowAuthorJson ([IO.File]::ReadAllText($path))
+        if ($operation.functions -isnot [array]) { throw 'functionsFile must contain a JSON array of function insertion definitions.' }
+        $operation.Remove('functionsFile')
+    }
     if ($operation.Contains('editsFile')) {
         if ($operation.type -notin @('sso.edit','strings.edit','xml.edit') -or $operation.Contains('edits')) { throw 'Use edits or editsFile on a text operation, not both.' }
         $path = Get-SnowAuthorFile $script:SnowAuthorRoot $operation.editsFile
@@ -308,6 +316,10 @@ function ConvertTo-SnowAuthorOperation($Definition, $Source, [string]$Variant) {
             $functions = @($report.Functions | Where-Object { $_.Class -ceq $operation.function.class -and $_.Name -ceq $operation.function.name })
             if ($functions.Count -ne 1) { throw "Function $($operation.function.class)::$($operation.function.name) is missing or ambiguous." }
             $method = $functions[0]
+            $minimumVersion = if ($Source.Contains('minSnowPatcherVersion')) { [version]$Source.minSnowPatcherVersion } else { [version]'1.1.0' }
+            if (@($method.Instructions | Where-Object { $_.Opcode -in @(63,65,66) }).Count -gt 0 -and $minimumVersion -lt [version]'1.4.0') {
+                throw 'Editing a function with array instructions needs minSnowPatcherVersion 1.4.0 or newer.'
+            }
             Set-SnowAuthorHash $operation.function 'bodySha256' $method.Sha256
             $constants = [Collections.Specialized.OrderedDictionary]::new([StringComparer]::Ordinal)
             foreach ($constant in $method.Constants) { $constants[$constant.Name] = $constant.Index }
@@ -385,7 +397,8 @@ function ConvertTo-SnowAuthorOperation($Definition, $Source, [string]$Variant) {
                 $method.constants = $values.ToArray()
             }
         }
-    } elseif ($operation.type -in @('resource.replace','resource.remove','sso.edit')) {
+    } elseif ($operation.type -in @('resource.replace','resource.remove','sso.edit','sslb.module.extend')) {
+        if ($operation.type -eq 'sslb.module.extend') { Add-SnowAuthorCheck @{file='Sources/BinEditor/meta_desc_ssl.ps';members=@()} }
         $bytes = Get-SnowAuthorResource $operation.target
         $indexed = $operation.type -eq 'sso.edit' -and @($operation.edits | ForEach-Object { $_.path } | Where-Object { $_ -isnot [string] }).Count -gt 0
         if ($operation.type -ne 'sso.edit' -or $operation.Contains('beforeSha256') -or $indexed) { Set-SnowAuthorHash $operation 'beforeSha256' (Get-SnowHash $bytes) }

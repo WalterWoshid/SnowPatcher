@@ -93,6 +93,11 @@ public static partial class CompatibilityChecker
             {
                 conflict = false;
             }
+            else if (a.Kind == "layout" || b.Kind == "layout")
+            {
+                conflict = a.Kind == b.Kind ? a.Requirement != b.Requirement || a.Outcome != b.Outcome :
+                    a.Kind == "method-add" || b.Kind == "method-add";
+            }
             else if (a.Kind == "method-add" || b.Kind == "method-add")
             {
                 conflict = a.Kind == b.Kind && a.Path[0] == b.Path[0] && (a.Path[1] == b.Path[1] || a.Path[2] == b.Path[2]);

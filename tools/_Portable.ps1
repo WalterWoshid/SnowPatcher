@@ -1,14 +1,16 @@
 # Shared portable-package generation. No game code is included in these guards.
 
-function Get-SnowPortableMember($Report, [string]$Name) {
+function Get-SnowPortableMember($Report, [string]$Name, [int]$Slot = -1) {
     if (-not $Report.PSObject.Properties['PortableMembers']) { $Report | Add-Member NoteProperty PortableMembers @{} }
-    if ($Report.PortableMembers.ContainsKey($Name)) { return $Report.PortableMembers[$Name] }
+    $cacheKey = if ($Slot -ge 0) { $Name + '#' + $Slot } else { $Name }
+    if ($Report.PortableMembers.ContainsKey($cacheKey)) { return $Report.PortableMembers[$cacheKey] }
     $parts = $Name.Split([string[]]@('::'), [StringSplitOptions]::None)
     if ($parts.Count -ne 2) { throw 'A portable member needs Class::Name.' }
     $refs = @($Report.References | Where-Object { $_.Kind -eq 'member' -and $_.Table -eq 'member-references' -and $_.Name -ceq $Name })
     $owners = @($Report.Classes | Where-Object Name -CEQ $parts[0])
     if ($owners.Count -gt 1) { throw "Ambiguous class: $($parts[0])" }
     $decl = @($owners | ForEach-Object { $_.Members | Where-Object Name -CEQ $parts[1] })
+    if ($Slot -ge 0) { $refs = @($refs | Where-Object Slot -EQ $Slot); $decl = @($decl | Where-Object Slot -EQ $Slot) }
     $sig = ''; $parent = ''; $extra = ''
     $signatures = @($refs | ForEach-Object { if ($null -ne $_.SignatureTypeSymbol) { $Report.Symbols[[int]$_.SignatureTypeSymbol].Name } else { '' } } | Sort-Object -CaseSensitive -Unique)
     if ($signatures.Count -gt 1) { throw "Overloaded reference needs an adapter: $Name" }
@@ -16,10 +18,10 @@ function Get-SnowPortableMember($Report, [string]$Name) {
         $m=$decl[0]; $slot=[int]$m.Slot; $kind=[int]$m.Kind
         $classFields=Read-SnowFields ([Convert]::FromBase64String(@($Report.ModuleFields | Where-Object Field -EQ 7)[$owners[0].Index].Value))
         $rows=@($classFields | Where-Object Number -EQ 3 | ForEach-Object { ,(Read-SnowFields $_.Value) })
-        $row=@($rows | Where-Object { $Report.Strings[[int](Get-SnowField $_ 1)] -ceq $parts[1] })[0]
+        $row=@($rows | Where-Object { $Report.Strings[[int](Get-SnowField $_ 1)] -ceq $parts[1] -and [int](Get-SnowField $_ 2) -eq $slot })[0]
         $extraBytes=[IO.MemoryStream]::new()
         try {
-            $raw=[byte[]]@($classFields | Where-Object Number -EQ 3)[$([array]::IndexOf(@($owners[0].Members.Name),$parts[1]))].Value
+            $raw=[byte[]]@($classFields | Where-Object { $_.Number -eq 3 -and [int](Get-SnowField (Read-SnowFields $_.Value) 2) -eq $slot })[0].Value
             foreach($f in $row) { if($f.Number -notin @(1,2,3,8) -and -not ($kind -eq 2 -and $f.Number -eq 4)) { $extraBytes.Write($raw,$f.Offset,$f.Length) } }
             $extra=([BitConverter]::ToString($extraBytes.ToArray())).Replace('-','')
         } finally { $extraBytes.Dispose() }
@@ -43,7 +45,7 @@ function Get-SnowPortableMember($Report, [string]$Name) {
     if($sig -match 'symbol\[' -or $parent -match 'symbol\['){throw "Member $Name has an unsupported type. Use -Strict until its layout has an adapter."}
     $contract=(ConvertTo-SnowB64 $parts[0])+'|'+(ConvertTo-SnowB64 $parts[1])+'|'+$kind+'|'+(ConvertTo-SnowB64 $sig)+'|'+(ConvertTo-SnowB64 $parent)+'|'+$extra
     $result=@{ slot=$slot; contract=(Get-SnowHash $script:SnowUtf8.GetBytes($contract)) }
-    $Report.PortableMembers[$Name]=$result
+    $Report.PortableMembers[$cacheKey]=$result
     return $result
 }
 function ConvertTo-SnowB64([string]$Text) { return [Convert]::ToBase64String($script:SnowUtf8.GetBytes($Text)) }
@@ -70,6 +72,9 @@ function Get-SnowPortableConstant($Report, $Method, [int]$Index) {
 }
 function Get-SnowPortableFunctionHash($Report, $Method) {
     $opcodes=Get-SnowOpcodes
+    if (-not $Report.PSObject.Properties['PortableSlotContracts']) {
+        $Report | Add-Member NoteProperty PortableSlotContracts ([Collections.Generic.Dictionary[int,string]]::new())
+    }
     $identity=$Method.Class+'::'+$Method.Name
     $flags=@($Method.Fields|Where-Object Field -EQ 3)
     if($flags.Count -ne 1 -or @($Method.Fields|Where-Object {$_.Field -notin @(1,2,3,4,5)}).Count){throw 'Unknown portable function metadata.'}
@@ -79,17 +84,21 @@ function Get-SnowPortableFunctionHash($Report, $Method) {
     $lines.Add('flags:'+[string]$flags[0].Value)
     foreach($i in $Method.Instructions) {
         $op=[int]$i.Opcode; $arg=[int]$i.Operand
-        if($op -notin @(1,2,3,4,5,6,7,8,10,13,14,15,18,19,20,21,22,24,25,26,27,30,32,33,36,37,40,43,48,49,50,53,56,57,58,59,60,63,65,68,69,71,72)){throw "Opcode $op needs a relocation adapter."}
-        if($op -in @(21,30,43,56,63,65,69,72) -and $arg -ne 0){throw "Unsupported scalar/array instruction flags."}
+        if($op -notin @(1,2,3,4,5,6,7,8,10,13,14,15,16,17,18,19,20,21,22,24,25,26,27,30,32,33,36,37,40,43,48,49,50,53,56,57,58,59,60,63,65,66,68,69,71,72)){throw "Opcode $op needs a relocation adapter."}
+        if($op -in @(21,30,43,56,63,65,66,69,72) -and $arg -ne 0){throw "Unsupported scalar/array instruction flags."}
         if($op -in @(10,13,14,60)) {
-            $names=@($Report.References|Where-Object {$_.Kind -eq 'member' -and $_.Slot -eq $arg}|ForEach-Object Name|Sort-Object -CaseSensitive -Unique)
-            $functionNames=@($Report.References|Where-Object {$_.Kind -eq 'function' -and $_.Slot -eq $arg}|ForEach-Object Name|Sort-Object -CaseSensitive -Unique)
-            if(-not $names.Count -and -not $functionNames.Count){throw "Dispatch slot $arg has no named identity."}
-            $contracts=[string[]]@(@($names|ForEach-Object { $_+'='+(Get-SnowPortableMember $Report $_).contract })+@($functionNames|ForEach-Object {'global:'+$_+'='+(Get-SnowPortableGlobalFunction $Report $_).contract}))
-            [Array]::Sort($contracts,[StringComparer]::Ordinal)
-            $value='m:'+($contracts -join ';')
+            if (-not $Report.PortableSlotContracts.ContainsKey($arg)) {
+                $names=@($Report.References|Where-Object {$_.Kind -eq 'member' -and $_.Slot -eq $arg}|ForEach-Object Name|Sort-Object -CaseSensitive -Unique)
+                $functionNames=@($Report.References|Where-Object {$_.Kind -eq 'function' -and $_.Slot -eq $arg}|ForEach-Object Name|Sort-Object -CaseSensitive -Unique)
+                if(-not $names.Count -and -not $functionNames.Count){throw "Dispatch slot $arg has no named identity."}
+                $contracts=[string[]]@(@($names|ForEach-Object { $_+'='+(Get-SnowPortableMember $Report $_ $arg).contract })+@($functionNames|ForEach-Object {'global:'+$_+'='+(Get-SnowPortableGlobalFunction $Report $_).contract}))
+                [Array]::Sort($contracts,[StringComparer]::Ordinal)
+                $Report.PortableSlotContracts[$arg]='m:'+($contracts -join ';')
+            }
+            $value=$Report.PortableSlotContracts[$arg]
         } elseif($opcodes.ContainsKey($op) -and $opcodes[$op].Operand -eq 'constant') { $value='c:'+(Get-SnowPortableConstant $Report $Method $arg) }
         elseif($op -eq 8){$global=@($Report.References|Where-Object {$_.Kind -eq 'global' -and $_.Index -eq $arg});if($global.Count -ne 1){throw 'Invalid global.'};$value='g:'+(ConvertTo-SnowB64 $global[0].Name)}
+        elseif($op -in @(16,17)){$value='opaque:'+$Report.ContextSha256+':'+[string]$arg}
         else { $value='n:'+[string]$arg }
         $lines.Add([string]$op+':'+$value)
     }

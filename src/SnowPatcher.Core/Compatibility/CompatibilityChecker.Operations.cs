@@ -30,6 +30,28 @@ public static partial class CompatibilityChecker
 
         switch (operation.Type)
         {
+            case "sslb.module.extend":
+                if (data is null)
+                {
+                    throw new CheckFailure("missing", "The script module is missing.");
+                }
+                var extended = package.ReadPayload(definition.GetProperty("payload").GetString()!, token);
+                var original = new SslModule(data);
+                var extension = original.Extend(extended, definition, token);
+                claims?.Add(new Claim(result, operation.Id, target, "layout", [], GameResources.Hash(data), GameResources.Hash(extended), 0, 0, false, ""));
+                foreach (var added in extension.Functions)
+                {
+                    foreach (var edit in added.Definition.GetProperty("edits").EnumerateArray())
+                    {
+                        var instructions = original.InstructionCount(added.Definition.GetProperty("function"));
+                        var at = edit.GetProperty("mode").GetString() == "after" ? instructions : instructions - edit.GetProperty("match").GetArrayLength();
+                        claims?.Add(new Claim(result, operation.Id, target, "function", [added.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture)], added.BodyHash,
+                            GameResources.Hash(System.Text.Encoding.UTF8.GetBytes(edit.GetRawText())), at, at, true,
+                            added.Definition.GetProperty("function").GetProperty("class").GetString() + "::" + added.Definition.GetProperty("function").GetProperty("name").GetString()));
+                    }
+                }
+                view.Write(target, extended);
+                break;
             case "resource.add":
             case "resource.replace":
                 if (operation.Type == "resource.add")
@@ -120,7 +142,7 @@ public static partial class CompatibilityChecker
                     throw new CheckFailure("missing", "The script module is missing.");
                 }
 
-                var function = new SslModule(data).Preview(definition, guards, PortablePackage.BoundReferences(package.Manifest, operation), token);
+                var function = new SslModule(data).Preview(definition, guards, PortablePackage.BoundReferences(package.Manifest, operation), cancellationToken: token);
                 foreach (var change in function.Changes)
                 {
                     claims?.Add(new Claim(result, operation.Id, target, "function", [change.Identity], change.BodyHash, change.Fingerprint, change.Start, change.End, change.Insertion, definition.GetProperty("function").GetProperty("class").GetString() + "::" + definition.GetProperty("function").GetProperty("name").GetString()));

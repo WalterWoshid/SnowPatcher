@@ -331,6 +331,28 @@ a container change record. Comparing folders excludes `_snowpatcher` metadata.
 Use a known original from the same game build when identifying a mod's changes.
 A comparison lists differences; it does not decide whether two mods can be merged.
 
+## Extend an existing script module
+
+SnowPatcher 1.4 supports `sslb.module.extend` for compilers that add shared tables,
+class members or functions. Supply a compiled payload and a `functions` array
+with each changed function's `class`, `name` and ordered `insertions` (`at` and
+`length`, in original instruction indices). Authoring sources can put that array
+in `functionsFile`, which supports `{variant}`.
+
+The checker proves that existing declarations and instructions survive unchanged,
+including relocated jumps. Compatible function edits from other mods can then be
+composed against the original function. Changes at the same boundary conflict.
+Only one distinct module extension can be composed on a module at present;
+whole-module replacements and method-add operations on it also conflict.
+
+Extensions require the exact checked module and native metadata baseline. A
+module baseline may come from an explicit dependency. Use
+ordinary named function edits for portable changes. Array instructions include
+`array_get`, `array_count` and `array_append`, with operand zero. Function edits
+can expand the initial `reserve` frame and use the added negative local slots.
+Event subscription instructions can be guarded as existing code, but their shared
+context must stay unchanged; they are not exposed as new editable instructions.
+
 ## Format notes and limits
 
 These observations describe the layouts accepted by the tools, not an official

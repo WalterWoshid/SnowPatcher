@@ -7,7 +7,7 @@ namespace SnowPatcher.Core.Compatibility;
 
 internal sealed partial class SslModule
 {
-    public FunctionPreview Preview(JsonElement operation, bool guards, IReadOnlySet<(int Op, int Value)>? boundReferences = null, CancellationToken cancellationToken = default)
+    public FunctionPreview Preview(JsonElement operation, bool guards, IReadOnlySet<(int Op, int Value)>? boundReferences = null, bool extensionLayout = false, CancellationToken cancellationToken = default)
     {
         if (guards && ContextHash() != operation.GetProperty("moduleContextSha256").GetString())
         {
@@ -73,12 +73,12 @@ internal sealed partial class SslModule
 
             var word = (long)f.Integer - 0x80000000L;
             var instruction = ((int)(word & 255), (int)(word >> 8));
-            if (!Opcodes.Contains(instruction.Item1))
+            if (!extensionLayout && !Opcodes.Contains(instruction.Item1))
             {
                 throw new CheckFailure("unsupported", $"Opcode {instruction.Item1} needs an adapter before this function can be checked.");
             }
 
-            if (instruction.Item1 is 21 or 56 or 68 or 69 or 72 && instruction.Item2 != 0)
+            if (instruction.Item1 is 21 or 56 or 63 or 65 or 66 or 68 or 69 or 72 && instruction.Item2 != 0)
             {
                 throw new CheckFailure("unsupported", "Unsupported instruction operand flags.");
             }
@@ -136,6 +136,16 @@ internal sealed partial class SslModule
         }
 
         var output = new List<(int Op, int Arg, int OldTarget, Edit? Edit, JsonElement? Reference)>();
+        var localCount = code.Length > 0 && code[0].Item1 == 1 ? code[0].Item2 : 0;
+        var argumentCount = code.Where(i => i.Item1 is 18 or 19).Select(i => i.Item2).DefaultIfEmpty(0).Max();
+        foreach (var edit in edits.Where(e => e.Mode == "replace" && e.Start == 0))
+        {
+            var first = edit.Code.EnumerateArray().FirstOrDefault(row => row.TryGetProperty("op", out _));
+            if (first.ValueKind == JsonValueKind.Object && first.GetProperty("op").GetInt32() == 1 && first.GetProperty("arg").TryGetInt32(out var count) && count >= 0)
+            {
+                localCount = count;
+            }
+        }
         var oldTargets = Enumerable.Repeat(-1, code.Length + 1).ToArray();
         var originalBoundaries = Enumerable.Repeat(-1, code.Length + 1).ToArray();
         var indexAt = 0;
@@ -178,6 +188,14 @@ internal sealed partial class SslModule
             throw new CheckFailure("unsupported", "The edited function is too large.");
         }
 
+        var originalFrame = code.Length > 0 && code[0].Item1 == 1 ? code[0].Item2 : 0;
+        var editedFrame = output.Count > 0 && output[0].Op == 1 ? output[0].Arg : 0;
+        if (edits.Any(e => e.Mode == "replace" && e.Start == 0) && editedFrame < originalFrame &&
+            output.Any(i => (i.Op is 7 or 59) && i.Arg < -editedFrame))
+        {
+            throw new CheckFailure("unsupported", "The edited function still uses local slots outside its initial frame.");
+        }
+
         using var encodedCode = new MemoryStream();
         foreach (var instruction in output)
         {
@@ -199,6 +217,11 @@ internal sealed partial class SslModule
                     {
                         throw new CheckFailure("unsupported", "An instruction label could not be resolved.");
                     }
+                }
+                else if (extensionLayout && reference.TryGetProperty("original", out var original))
+                {
+                    var index = original.GetInt32();
+                    argument = index >= 0 && index < oldTargets.Length ? oldTargets[index] : -1;
                 }
                 else
                 {
@@ -245,7 +268,7 @@ internal sealed partial class SslModule
 
                 var op = Int32(row.GetProperty("op"));
                 var arg = row.GetProperty("arg");
-                if (!Opcodes.Contains(op))
+                if (!Opcodes.Contains(op) && !(extensionLayout && code.Any(i => i.Item1 == op)))
                 {
                     throw new CheckFailure("unsupported", $"New opcode {op} is not supported by the checker.");
                 }
@@ -262,13 +285,18 @@ internal sealed partial class SslModule
                 }
 
                 var value = Int32(arg);
-                if (op is 1 or 8 or 10 or 13 or 18 or 19 or 60 && !code.Contains((op, value)) &&
-                    !(op is 8 or 10 or 13 && boundReferences?.Contains((op, value)) == true))
+                if (op == 1 && value < 0)
+                {
+                    throw new CheckFailure("unsupported", "A local frame size cannot be negative.");
+                }
+                if (!extensionLayout && (op is 1 or 8 or 10 or 13 or 18 or 19 or 60) && !code.Contains((op, value)) &&
+                    !(op is 8 or 10 or 13 or 60 && boundReferences?.Contains((op, value)) == true) && !(op == 1 && value == localCount))
                 {
                     throw new CheckFailure("unsupported", "The edit uses a frame size or reference not already used by this function. It needs a more complete VM adapter.");
                 }
 
-                if (op is 7 or 59 && !code.Any(i => i.Item1 is 7 or 59 && i.Item2 == value))
+                if (op is 7 or 59 && !code.Any(i => i.Item1 is 7 or 59 && i.Item2 == value) &&
+                    !(value < 0 && value >= -localCount) && !(value >= 0 && value < argumentCount))
                 {
                     throw new CheckFailure("unsupported", "The edit requires a local slot not already used by this function.");
                 }
@@ -283,7 +311,7 @@ internal sealed partial class SslModule
                     throw new CheckFailure("unsupported", "Invalid boolean instruction operand.");
                 }
 
-                if (op is 2 or 3 or 21 or 27 or 32 or 36 or 56 or 68 or 69 or 72 && value != 0)
+                if (op is 2 or 3 or 21 or 27 or 32 or 36 or 56 or 63 or 65 or 66 or 68 or 69 or 72 && value != 0)
                 {
                     throw new CheckFailure("unsupported", "An instruction uses unsupported operand flags.");
                 }

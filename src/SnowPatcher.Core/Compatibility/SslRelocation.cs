@@ -141,9 +141,10 @@ internal sealed partial class SslModule
         return found[0];
     }
 
-    internal (int Slot, string Contract) ResolveMember(string name)
+    internal (int Slot, string Contract) ResolveMember(string name, int? slotHint = null)
     {
-        if (_memberContracts.TryGetValue(name, out var cached))
+        var cacheKey = slotHint is { } hint ? name + "#" + hint : name;
+        if (_memberContracts.TryGetValue(cacheKey, out var cached))
         {
             return cached;
         }
@@ -154,7 +155,8 @@ internal sealed partial class SslModule
             throw new CheckFailure("unsupported", "A member needs Class::Name.");
         }
 
-        var refs = RelocationReferences.Where(r => StringAt(One(r, 2, 0).Integer) == parts[1] && TypeName(checked((int)One(r, 3, 0).Integer)) == parts[0]).ToArray();
+        var refs = RelocationReferences.Where(r => StringAt(One(r, 2, 0).Integer) == parts[1] && TypeName(checked((int)One(r, 3, 0).Integer)) == parts[0] &&
+            (slotHint is null || One(r, 4, 0).Integer == (ulong)slotHint.Value)).ToArray();
         if (refs.Any(r => r.Any(f => f.Number is < 1 or > 5 || f.Wire != 0)))
         {
             throw new CheckFailure("unsupported", "Unknown member-reference metadata.");
@@ -167,7 +169,7 @@ internal sealed partial class SslModule
         }
 
         var declarations = owners.SelectMany(c => c.Where(f => f.Number == 3).Select(f => Fields(f.Data)))
-            .Where(m => StringAt(One(m, 1, 0).Integer) == parts[1]).ToArray();
+            .Where(m => StringAt(One(m, 1, 0).Integer) == parts[1] && (slotHint is null || One(m, 2, 0).Integer == (ulong)slotHint.Value)).ToArray();
         if (declarations.Length > 1)
         {
             throw new CheckFailure("changed", $"Member {name} is ambiguous.");
@@ -227,7 +229,7 @@ internal sealed partial class SslModule
             signature = ReferenceSignature(refs);
         }
         var contract = string.Join("|", B64(parts[0]), B64(parts[1]), kind.ToString(CultureInfo.InvariantCulture), B64(signature), B64(parent), extra);
-        return _memberContracts[name] = (slot, GameResources.Hash(Encoding.UTF8.GetBytes(contract)));
+        return _memberContracts[cacheKey] = (slot, GameResources.Hash(Encoding.UTF8.GetBytes(contract)));
     }
 
     private string ReferenceSignature(List<Field>[] references)
@@ -256,7 +258,7 @@ internal sealed partial class SslModule
                 .Select(m => StringAt(One(owner, 1, 0).Integer) + "::" + StringAt(One(m, 1, 0).Integer)));
         }
 
-        var contracts = names.Distinct(StringComparer.Ordinal).Select(n => n + "=" + ResolveMember(n).Contract).Order(StringComparer.Ordinal).ToArray();
+        var contracts = names.Distinct(StringComparer.Ordinal).Select(n => n + "=" + ResolveMember(n, slot).Contract).Order(StringComparer.Ordinal).ToArray();
         var functions = Fields(One(_fields, 4, 2).Data).Where(f => f.Number == 2).Select(f => Fields(f.Data))
             .Where(r => One(r, 3, 0).Integer == (ulong)slot).Select(r => GlobalName(checked((int)One(r, 4, 0).Integer)) + "::" + StringAt(One(r, 1, 0).Integer))
             .Distinct(StringComparer.Ordinal).Select(n => "global:" + n + "=" + ResolveGlobalFunction(n).Contract);
@@ -373,12 +375,12 @@ internal sealed partial class SslModule
             var word = (long)field.Integer - 0x80000000L;
             var op = (int)(word & 255);
             var arg = (int)(word >> 8);
-            if (!Opcodes.Contains(op) && op is not (14 or 30 or 33 or 37 or 40 or 43 or 63 or 65 or 71))
+            if (!Opcodes.Contains(op) && op is not (14 or 16 or 17 or 30 or 33 or 37 or 40 or 43 or 63 or 65 or 71))
             {
                 throw new CheckFailure("unsupported", $"Opcode {op} needs a relocation adapter.");
             }
 
-            if (op is 21 or 30 or 43 or 56 or 63 or 65 or 69 or 72 && arg != 0)
+            if (op is 21 or 30 or 43 or 56 or 63 or 65 or 66 or 69 or 72 && arg != 0)
             {
                 throw new CheckFailure("unsupported", "Unsupported scalar/array instruction flags.");
             }
@@ -387,6 +389,8 @@ internal sealed partial class SslModule
             {
                 10 or 13 or 14 or 60 => SlotContract(arg),
                 8 => "g:" + B64(GlobalName(arg)),
+                // Event subscription operands are preserved only with an identical shared context.
+                16 or 17 => "opaque:" + ContextHash() + ":" + arg.ToString(CultureInfo.InvariantCulture),
                 _ => "n:" + arg.ToString(CultureInfo.InvariantCulture)
             };
             lines.Add(op.ToString(CultureInfo.InvariantCulture) + ":" + identity);

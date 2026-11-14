@@ -8,6 +8,7 @@ function Get-SnowOpcodes {
         22='jump_if_false_pop'; 24='jump_if_false'; 25='jump_if_true'; 26='jump'; 27='not'
         32='add_int'; 33='add_float'; 36='subtract_int'; 37='subtract_float'; 40='multiply_float'
         48='op_48'; 49='op_49'; 50='op_50'; 53='cast'; 56='op_56'; 57='new_template'; 58='construct_template'; 59='store_slot'; 60='set_member'
+        63='array_get'; 65='array_count'; 66='array_append'
         68='get_index'; 69='set_index'; 71='get_index_or_default'; 72='dict_count'
     }
     $result = @{}
@@ -226,7 +227,7 @@ function ConvertTo-SnowInstruction($Line, $Report, $Constants = @{}, $Slots = @{
     elseif ($operand -match '^-?[0-9]+$') { $arg = [int]::Parse($operand, [Globalization.CultureInfo]::InvariantCulture) }
     else { throw "Invalid $kind operand '$operand' for $name." }
     if ($arg -is [int] -and ($arg -lt -8388608 -or $arg -gt 8388607)) { throw 'Instruction operand exceeds the VM encoding range.' }
-    if ($op -in @(21,56,69,72) -and $arg -ne 0) { throw "Instruction '$name' only supports operand 0." }
+    if ($op -in @(21,56,63,65,66,69,72) -and $arg -ne 0) { throw "Instruction '$name' only supports operand 0." }
     if ($Match) { return ,@($op,$arg) }
     return @{ op=$op; arg=$arg }
 }
