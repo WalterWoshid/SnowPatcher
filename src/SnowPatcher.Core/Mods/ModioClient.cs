@@ -105,7 +105,7 @@ public sealed partial class ModioClient
 
         var size = item.GetProperty("filesize").GetInt64();
         var md5 = item.GetProperty("filehash").GetProperty("md5").GetString() ?? "";
-        if (size <= 0 || size > 2L * 1024 * 1024 * 1024 || !Hash32().IsMatch(md5))
+        if (size <= 0 || size > Packages.PackageArchive.MaxArchiveSize || !Hash32().IsMatch(md5))
         {
             throw new InvalidDataException("The download size or checksum is invalid.");
         }

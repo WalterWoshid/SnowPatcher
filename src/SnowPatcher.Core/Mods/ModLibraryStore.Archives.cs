@@ -26,32 +26,7 @@ public sealed partial class ModLibraryStore
         var temporary = Path.Combine(staging, Guid.NewGuid().ToString("N") + ".zip");
         try
         {
-            await using (var input = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, 131072, true))
-            {
-                const long limit = 2L * 1024 * 1024 * 1024;
-                if (input.Length > limit)
-                {
-                    throw new InvalidDataException("The ZIP exceeds the 2 GiB archive limit.");
-                }
-
-                await using var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 131072, true);
-                var buffer = new byte[131072];
-                long total = 0;
-                int count;
-                while ((count = await input.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
-                {
-                    total += count;
-                    if (total > limit)
-                    {
-                        throw new InvalidDataException("The ZIP exceeds the 2 GiB archive limit.");
-                    }
-
-                    await output.WriteAsync(buffer.AsMemory(0, count), cancellationToken).ConfigureAwait(false);
-                }
-
-                await output.FlushAsync(cancellationToken).ConfigureAwait(false);
-                output.Flush(flushToDisk: true);
-            }
+            await CopyToStagingAsync(sourcePath, temporary, cancellationToken).ConfigureAwait(false);
 
             var archive = await Task.Run(() => ModArchiveReader.Read(temporary, cancellationToken), cancellationToken).ConfigureAwait(false);
             if (expectedSha256 is not null && archive.Sha256 != expectedSha256)
@@ -84,6 +59,36 @@ public sealed partial class ModLibraryStore
             {
                 File.Delete(temporary);
             }
+        }
+    }
+
+    private static async Task CopyToStagingAsync(string sourcePath, string temporary, CancellationToken cancellationToken)
+    {
+        await using (var input = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, 131072, true))
+        {
+            const long limit = PackageArchive.MaxArchiveSize;
+            if (input.Length > limit)
+            {
+                throw new InvalidDataException("The ZIP exceeds the 2 GiB archive limit.");
+            }
+
+            await using var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 131072, true);
+            var buffer = new byte[131072];
+            long total = 0;
+            int count;
+            while ((count = await input.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
+            {
+                total += count;
+                if (total > limit)
+                {
+                    throw new InvalidDataException("The ZIP exceeds the 2 GiB archive limit.");
+                }
+
+                await output.WriteAsync(buffer.AsMemory(0, count), cancellationToken).ConfigureAwait(false);
+            }
+
+            await output.FlushAsync(cancellationToken).ConfigureAwait(false);
+            output.Flush(flushToDisk: true);
         }
     }
 

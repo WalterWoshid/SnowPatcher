@@ -6,6 +6,7 @@ namespace SnowPatcher.Core.Packages;
 internal sealed class PackageArchive : IDisposable
 {
     internal const string ManifestName = "snowpatcher.json";
+    internal const long MaxArchiveSize = 2L * 1024 * 1024 * 1024;
     internal const int MaxManifestSize = 4 * 1024 * 1024;
     internal const int MaxPayloadSize = 256 * 1024 * 1024;
     internal const long MaxExpandedSize = 1024L * 1024 * 1024;
@@ -24,7 +25,7 @@ internal sealed class PackageArchive : IDisposable
         _stream = new FileStream(SourcePath, FileMode.Open, FileAccess.Read, FileShare.Read);
         try
         {
-            if (_stream.Length > 2L * 1024 * 1024 * 1024)
+            if (_stream.Length > MaxArchiveSize)
             {
                 throw new InvalidDataException("The ZIP exceeds the 2 GiB archive limit.");
             }
