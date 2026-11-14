@@ -12,7 +12,8 @@
 [Download](https://github.com/WalterWoshid/SnowPatcher/releases/latest) ·
 [mod.io](https://mod.io/g/snowrunner/m/snowpatcher-mod-manager)
 
-Extract the Windows ZIP into its own folder and run `SnowPatcher.exe`.
+Run the Windows setup EXE, or extract the portable ZIP and run `SnowPatcher.exe`.
+Setup offers Start menu and desktop shortcuts, startup at sign-in and launch after installation.
 The Windows build is tested; the Linux build is provided without an in-game test.
 
 Detects your Steam installation, checks mod compatibility and backs up game files
@@ -39,7 +40,8 @@ dotnet format --verify-no-changes
 ```
 
 Builds enforce the recommended .NET analyzers and code style.
-Version tags build desktop releases and upload the Windows ZIP to mod.io.
+Version tags build desktop releases and upload the Windows installer ZIP to mod.io.
+Windows installer builds also require Inno Setup 6 or 7.
 
 [Modding tools](docs/MODDING.md) · [Package format](docs/PACKAGES.md) ·
 [App behavior](docs/APPLICATION.md) · [mod.io setup](docs/MODIO.md)

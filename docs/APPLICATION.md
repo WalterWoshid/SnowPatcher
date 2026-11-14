@@ -1,5 +1,15 @@
 # Application behavior
 
+## Installation
+
+Windows setup installs for the current user under `LocalAppData/Programs/SnowPatcher`.
+Start menu access is on by default; desktop shortcuts and startup at sign-in are optional.
+The final page offers to launch the app. No administrator access or separate .NET install is needed.
+
+Setup and uninstall ask you to close SnowPatcher first, including its tray process.
+Uninstall removes the program and its shortcuts. Mods, backups, preferences and game files are kept.
+The portable ZIP uses the same per-user library and update flow.
+
 ## Preferences and background checks
 
 **Options > Preferences** separates update checks from automatic installation.

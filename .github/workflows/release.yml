@@ -60,6 +60,8 @@ jobs:
           $name = "SnowPatcher-$env:RELEASE_VERSION-$env:RUNTIME"
           if ($env:RUNTIME -eq 'win-x64') {
             Compress-Archive -Path artifacts/app/* -DestinationPath "artifacts/release/$name.zip"
+            ./scripts/build_installer.ps1 -AppDirectory artifacts/app -OutputDirectory artifacts/release
+            Compress-Archive -Path "artifacts/release/$name-setup.exe" -DestinationPath "artifacts/release/$name-setup.zip"
           } else {
             tar -czf "artifacts/release/$name.tar.gz" -C artifacts/app .
             if ($LASTEXITCODE) { throw 'Archive creation failed.' }
@@ -89,7 +91,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          printf '%s\n' 'Extract the Windows ZIP and run SnowPatcher.exe. No separate .NET installation is needed.' '' 'SnowPatcher checks for application updates at startup. Version 1.0.0 users need to download this release manually once.' '' 'The Linux build is provided without an in-game test.' > artifacts/notes.md
+          printf '%s\n' 'Run the Windows setup EXE to install SnowPatcher. Start menu, desktop and startup options are included. No separate .NET installation is needed.' '' 'The Windows ZIP is also available for portable use: extract it and run SnowPatcher.exe.' '' 'SnowPatcher checks for application updates at startup. Version 1.0.0 users need to download this release manually once.' '' 'The Linux build is provided without an in-game test.' > artifacts/notes.md
           if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release create "$RELEASE_TAG" artifacts/release/* --title "SnowPatcher ${RELEASE_TAG#v}" --notes-file artifacts/notes.md
           else
@@ -108,7 +110,7 @@ jobs:
           MODIO_MOD_ID: ${{ vars.MODIO_MOD_ID }}
         run: |
           python -c 'import json,os; from pathlib import Path; Path("artifacts/metadata.json").write_text(json.dumps({"format":"snowpatcher-application","source":"https://github.com/WalterWoshid/SnowPatcher","tag":os.environ["RELEASE_TAG"]}))'
-          python scripts/publish_modio.py --mod-id "$MODIO_MOD_ID" --archive "artifacts/release/SnowPatcher-${RELEASE_TAG#v}-win-x64.zip" --version "${RELEASE_TAG#v}" --metadata artifacts/metadata.json --changelog artifacts/notes.md
+          python scripts/publish_modio.py --mod-id "$MODIO_MOD_ID" --archive "artifacts/release/SnowPatcher-${RELEASE_TAG#v}-win-x64-setup.zip" --version "${RELEASE_TAG#v}" --metadata artifacts/metadata.json --changelog artifacts/notes.md
       - name: Report pending mod.io setup
         if: vars.MODIO_MOD_ID == ''
         run: echo '::warning::GitHub release published. Set MODIO_MOD_ID and rerun this workflow after creating the mod.io listing.'
