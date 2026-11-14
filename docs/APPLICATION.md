@@ -26,7 +26,7 @@ and repeated checks do not repeat an alert. Completion notifications can be disa
 
 Automatic reapplication uses the last applied selection. Manual selection changes,
 conflicts and interrupted transactions require review. Game writes wait for
-SnowRunner to close and Steam to finish. Automatic mod updates are checked together
+SnowRunner to close and the game launcher to finish. Automatic mod updates are checked together
 before replacing the working versions; previous ZIPs and game backups are retained.
 Queued automatic updates stop if the mod selection or game folder changes.
 **Options > Pause automatic actions** pauses the current session without disabling
@@ -68,28 +68,54 @@ disabled like other mods.
 
 ## Checks and game updates
 
-SnowPatcher detects Steam installations and shows the installed build. A date is
-shown only when Steam's public branch identifies that same build.
+SnowPatcher detects Steam and Epic Games installations. Epic's `en_us` content folder
+is selected automatically when needed, including when choosing the installation with Browse.
+If both stores are installed, Browse can select the other copy; the choice is remembered.
+Epic discovery reads the launcher's local installation records and requires no account login.
+
+Other stores and manual copies can be selected with Browse. No launcher account or
+store receipt is required. Content folders are resolved automatically; the chosen
+folder is remembered. Compatibility depends on the files each mod patches.
+
+Build information comes from the selected launcher. A release date is shown only
+when Steam's public branch identifies the installed Steam build. Epic shows its installed version.
+Manual installations show the executable's file version when available, or Unknown.
+Their build identity uses executable metadata that code patches leave unchanged.
 
 Compatibility checks run after selection changes. **Check mods** runs a fresh
 check; click a result for the affected operation, resource and conflicting mod.
 Disabled mods are excluded. Download availability does not prove compatibility.
 
-After a Steam update or repair, open SnowPatcher and check the selection again.
+After a game update or repair, open SnowPatcher and check the selection again.
 Apply can rebuild compatible patches against verified new originals. Changed
-required code stops the patch and needs review. Manual changes removed by Steam
+required code stops the patch and needs review. Manual changes removed by the launcher
 need to be reapplied separately or supplied as SnowPatcher packages.
 
 ## Apply, backups and restore
 
-Apply and restore require a closed game and a stable Steam installation.
+Apply and restore require a closed game and stable installation files.
 SnowPatcher verifies and saves starting files, preimages and a backup before
 writing. Outputs are staged and checked again before replacement.
 
 Existing manual changes can become the starting files when all patch guards
 pass. Once an installation is managed, unexplained external changes block Apply.
-Verified Steam originals and recorded historical outputs can be recognized
+Verified launcher originals and recorded historical outputs can be recognized
 without treating unknown modifications as safe starting files.
+
+Epic's local BuildPatch manifest supplies original-file checksums. When reference data
+is missing or unreadable, existing file checks still apply; unexplained changes to an
+already managed installation require refreshed reference data or a recorded backup.
+Unfinished Epic installs, validation and resumable updates block writes.
+
+Manual installations use the same patch guards, backups and rollback. Without a
+launcher manifest, SnowPatcher cannot prove that externally replaced files are
+originals. Recorded starting files and historical outputs remain recognizable;
+unknown changes to managed files require restoring those starting files or a backup.
+Recognized launcher updates still block writes while in progress.
+
+Epic installation handling is checked with launcher-layout fixtures and real Epic
+manifest files. In-game behavior on an Epic copy of SnowRunner still needs confirmation;
+the Steam build number in a mod package is not evidence of Epic compatibility.
 
 Disabling all mods restores the saved starting files. Reapplying an unchanged
 selection leaves game files untouched. Saves and launch options are not changed.

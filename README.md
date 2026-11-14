@@ -16,8 +16,9 @@ Run the Windows setup EXE, or extract the portable ZIP and run `SnowPatcher.exe`
 Setup offers Start menu and desktop shortcuts, startup at sign-in and launch after installation.
 The Windows build is tested; the Linux build is provided without an in-game test.
 
-Detects your Steam installation, checks mod compatibility and backs up game files
-before applying changes. Drop in SnowPatcher ZIPs or add mod.io links, enable the
+Detects Steam and Epic Games installations; other copies can be selected with Browse.
+Checks mod compatibility and backs up game files before applying changes.
+Drop in SnowPatcher ZIPs or add mod.io links, enable the
 mods you want and click Apply with SnowRunner closed.
 
 Checks for SnowPatcher updates at startup. Click the update button to download and
