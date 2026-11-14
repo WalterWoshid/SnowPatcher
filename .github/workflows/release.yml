@@ -7,7 +7,7 @@ on:
       tag:
         description: Existing version tag
         required: true
-        default: v1.0.0
+        default: v1.1.0
 permissions:
   contents: read
 concurrency:
@@ -54,6 +54,8 @@ jobs:
           RUNTIME: ${{ matrix.rid }}
         run: |
           Copy-Item README.md artifacts/app/README.md
+          python scripts/write_update_manifest.py artifacts/app --version $env:RELEASE_VERSION --platform $env:RUNTIME
+          if ($LASTEXITCODE) { throw 'Update manifest creation failed.' }
           New-Item artifacts/release -ItemType Directory -Force | Out-Null
           $name = "SnowPatcher-$env:RELEASE_VERSION-$env:RUNTIME"
           if ($env:RUNTIME -eq 'win-x64') {
@@ -87,7 +89,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          printf '%s\n' 'Extract the Windows ZIP and run SnowPatcher.exe. No separate .NET installation is needed.' '' 'The Linux build is provided without an in-game test.' > artifacts/notes.md
+          printf '%s\n' 'Extract the Windows ZIP and run SnowPatcher.exe. No separate .NET installation is needed.' '' 'SnowPatcher checks for application updates at startup. Version 1.0.0 users need to download this release manually once.' '' 'The Linux build is provided without an in-game test.' > artifacts/notes.md
           if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release create "$RELEASE_TAG" artifacts/release/* --title "SnowPatcher ${RELEASE_TAG#v}" --notes-file artifacts/notes.md
           else

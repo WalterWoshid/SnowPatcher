@@ -3,6 +3,8 @@
           Condition="'$(LocalAppData)' != '' and Exists('$(LocalAppData)/SnowPatcher/BuildSettings.props')" />
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <AssemblyName>SnowPatcher</AssemblyName>
+    <Product>SnowPatcher</Product>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <SnowPatcherModioApiKey Condition="'$(SnowPatcherModioApiKey)' == ''">$(SNOWPATCHER_MODIO_API_KEY)</SnowPatcherModioApiKey>
   </PropertyGroup>

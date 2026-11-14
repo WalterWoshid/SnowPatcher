@@ -1,0 +1,15 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SnowPatcher.App.Views.ResumeModInstallWindow"
+        Title="Installing mod" Width="530" MinWidth="460" SizeToContent="Height"
+        CanResize="False" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+  <Grid Margin="16" RowDefinitions="Auto,Auto,Auto" RowSpacing="12">
+    <TextBlock x:Name="MessageText" TextWrapping="Wrap" />
+    <ProgressBar Grid.Row="1" x:Name="InstallProgress" Height="14" IsIndeterminate="True"
+                 AutomationProperties.Name="Mod installation progress" />
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button x:Name="CloseButton" Content="Close" IsCancel="True" IsEnabled="False" Click="OnClose" />
+      <Button x:Name="RetryButton" Content="Retry" IsDefault="True" IsVisible="False" Click="OnRetry" />
+    </StackPanel>
+  </Grid>
+</Window>

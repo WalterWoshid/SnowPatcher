@@ -16,6 +16,10 @@ public partial class MainWindow : Window
     private readonly IBrush? _normalListBorder;
     private bool _closing;
     private bool _closeApproved;
+    private bool _forceExit;
+    private Task? _initializationTask;
+    internal MainWindowViewModel Model => ViewModel;
+    public bool IsInBackground => !IsVisible || WindowState == WindowState.Minimized;
     public MainWindow() : this(new MainWindowViewModel()) { }
 
     public MainWindow(MainWindowViewModel viewModel)
@@ -27,16 +31,15 @@ public partial class MainWindow : Window
         AddHandler(DragDrop.DragOverEvent, OnDragOver, RoutingStrategies.Bubble, handledEventsToo: true);
         AddHandler(DragDrop.DragLeaveEvent, OnDragLeave, RoutingStrategies.Bubble, handledEventsToo: true);
         AddHandler(DragDrop.DropEvent, OnDrop, RoutingStrategies.Bubble, handledEventsToo: true);
-        Opened += async (_, _) =>
-        {
-            await Task.WhenAll(ViewModel.AutoDetectGameFolderAsync(), ViewModel.InitializeLibraryAsync());
-            if (!ViewModel.IsClosing)
-            {
-                _updateTimer.Start();
-            }
-        };
+        ViewModel.ApplicationUpdateRequested += OnApplicationUpdateRequested;
+        Opened += async (_, _) => await InitializeWindowAsync();
+        Activated += async (_, _) => await PresentPendingDialogsAsync();
         _updateTimer.Tick += async (_, _) => await ViewModel.CheckUpdatesAsync();
-        Closed += (_, _) => _updateTimer.Stop();
+        Closed += (_, _) =>
+        {
+            _updateTimer.Stop();
+            ViewModel.ApplicationUpdateRequested -= OnApplicationUpdateRequested;
+        };
         Closing += OnClosing;
     }
 
@@ -50,7 +53,7 @@ public partial class MainWindow : Window
         }
 
         args.Cancel = true;
-        if (_closing || ViewModel.IsRestoring || ViewModel.IsApplying)
+        if (_closing || !_forceExit && (ViewModel.IsRestoring || ViewModel.IsApplying))
         {
             return;
         }
@@ -68,6 +71,12 @@ public partial class MainWindow : Window
             _closing = false;
             ViewModel.SetStatus("Could not finish closing: " + error.Message);
         }
+    }
+
+    public void ExitApplication()
+    {
+        _forceExit = true;
+        Close();
     }
 
     private void OnDragOver(object? sender, DragEventArgs args)

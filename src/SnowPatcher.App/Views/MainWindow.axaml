@@ -3,7 +3,7 @@
         xmlns:vm="using:SnowPatcher.App.ViewModels"
         x:Class="SnowPatcher.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Title="SnowPatcher"
+        Title="{Binding ApplicationTitle}"
         Width="900" Height="500"
         MinWidth="720" MinHeight="400"
         DragDrop.AllowDrop="True"
@@ -146,6 +146,10 @@
     <Grid Grid.Row="4" ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8">
       <Button x:Name="RestoreButton" Content="Backups..." IsEnabled="{Binding CanRestore}" Click="OnRestoreBackup" />
       <Button Grid.Column="1" x:Name="CheckModsButton" Content="{Binding CheckModsText}" IsEnabled="{Binding CanCheckMods}" Click="OnCheckMods" />
+      <Button Grid.Column="2" x:Name="ApplicationUpdateButton" Content="{Binding ApplicationUpdateText}"
+              IsEnabled="{Binding CanUpdateApplication}" HorizontalAlignment="Right"
+              ToolTip.Tip="{Binding ApplicationUpdateDetail}" AutomationProperties.Name="{Binding ApplicationUpdateText}"
+              Click="OnApplicationUpdate" />
       <Button Grid.Column="3" x:Name="ApplyButton" Content="{Binding ApplyText}" IsEnabled="{Binding CanApply}"
               ToolTip.Tip="{Binding ApplyDetail}" Click="OnApplyMods" />
     </Grid>

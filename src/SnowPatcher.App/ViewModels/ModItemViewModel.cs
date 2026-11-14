@@ -11,8 +11,10 @@ public sealed class ModItemViewModel : ObservableObject
     private string _busyText = "";
     private string _checkStatus = "Not checked";
     private string _checkDetail = "Run Check mods to inspect the enabled selection.";
+    private string _unavailableReason;
+    private string? _requiredSnowPatcherVersion;
 
-    public ModItemViewModel(ModArchive archive, LibraryMod? saved = null, bool unavailable = false)
+    public ModItemViewModel(ModArchive archive, LibraryMod? saved = null, bool unavailable = false, string unavailableReason = "", string? requiredSnowPatcherVersion = null)
     {
         Archive = archive;
         _record = saved is null ? new LibraryMod(Guid.NewGuid(), archive.SourcePath, archive.Sha256, true, null, null, null, [], archive.Package?.Manifest.Id)
@@ -21,6 +23,12 @@ public sealed class ModItemViewModel : ObservableObject
                 PackageId = saved.PackageId ?? archive.Package?.Manifest.Id
             };
         IsUnavailable = unavailable;
+        _unavailableReason = unavailableReason;
+        _requiredSnowPatcherVersion = requiredSnowPatcherVersion;
+        if (unavailableReason.Length > 0)
+        {
+            SetCompatibilityState("Unavailable", unavailableReason);
+        }
         _isEnabled = _record.IsEnabled;
         _record = _record with
         {
@@ -35,6 +43,7 @@ public sealed class ModItemViewModel : ObservableObject
     public string SourcePath => Archive.SourcePath;
     public string Version => IsUnavailable ? "Unknown" : Archive.Package?.Manifest.Version ?? Source?.Version ?? "Unknown";
     public string VersionDetail => (Version == "Unknown" ? "This ZIP does not provide a verified mod version." : Version) +
+        (Archive.Package?.Manifest.MinSnowPatcherVersion is { } minimum ? $"\nRequires SnowPatcher {minimum} or newer." : "") +
         (HasPreviousVersions ? "\nClick to choose a previous version." : "");
     public bool HasPreviousVersions => _record.PackageId != BuiltinMods.IndicatorId && _record.PreviousDownloads.Length > 0;
     public bool ShowPlainVersion => !HasPreviousVersions;
@@ -44,7 +53,7 @@ public sealed class ModItemViewModel : ObservableObject
     public string ToggleLabel => $"{(IsEnabled ? "Disable" : "Enable")} {Name}";
     public string RemoveLabel => $"Remove {Name}";
     public string Details => $"{Name}" + (Archive.Package is { } package ? "\nBy " + string.Join(", ", package.Manifest.Authors) : "") +
-        $"\n{(IsUnavailable ? "ZIP missing or changed" : Archive.Package is null ? "Manual ZIP" : "Files checked")}\n{SourcePath}" +
+        $"\n{(IsUnavailable ? _unavailableReason.Length > 0 ? _unavailableReason : "ZIP unavailable" : Archive.Package is null ? "Manual ZIP" : "Files checked")}\n{SourcePath}" +
         (ModPage is { } page ? "\n" + page.AbsoluteUri : "");
     public Uri? ModPage => _record.PackageId == BuiltinMods.IndicatorId ? null :
         ModioPage.Parse(Archive.Package?.Manifest.ModioUrl) ?? ModioPage.Parse(_record.ModioUrl) ??
@@ -81,15 +90,17 @@ public sealed class ModItemViewModel : ObservableObject
 
     public void SetCompatibilityState(string status, string detail)
     {
-        _checkStatus = status;
-        _checkDetail = detail;
+        _checkStatus = IsUnavailable && _unavailableReason.Length > 0 ? _requiredSnowPatcherVersion is null ? "Unavailable" : "Update required" : status;
+        _checkDetail = IsUnavailable && _unavailableReason.Length > 0 ? _unavailableReason : detail;
         RaisePropertyChanged(nameof(CheckStatus));
         RaisePropertyChanged(nameof(CheckDetail));
         RaisePropertyChanged(nameof(CheckLabel));
     }
 
-    public void SetCompatibility(ModCompatibility result, CompatibilityReport report) =>
+    public void SetCompatibility(ModCompatibility result, CompatibilityReport report)
+    {
         SetCompatibilityState(result.Status, result.Detail + "\n\n" + report.BaselineDetail + $"\nChecked {report.CheckedAt.ToLocalTime():g}.");
+    }
 
     public LibraryMod ToRecord() => _record with { IsEnabled = IsEnabled };
 
@@ -147,6 +158,8 @@ public sealed class ModItemViewModel : ObservableObject
         _record = record;
         _error = "";
         IsUnavailable = false;
+        _unavailableReason = "";
+        _requiredSnowPatcherVersion = null;
         foreach (var name in new[] { nameof(Archive), nameof(Name), nameof(SourcePath), nameof(Source), nameof(Version),
                      nameof(VersionDetail), nameof(Details), nameof(ToggleLabel), nameof(RemoveLabel), nameof(ShowRemove),
                      nameof(HasPreviousVersions), nameof(ShowPlainVersion), nameof(PreviousVersionsLabel), nameof(CanChooseVersion),

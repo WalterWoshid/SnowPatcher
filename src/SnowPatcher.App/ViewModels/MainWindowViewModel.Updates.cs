@@ -4,9 +4,9 @@ namespace SnowPatcher.App.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
-    public async Task CheckUpdatesAsync()
+    public async Task CheckUpdatesAsync(bool force = false)
     {
-        if (_checkingUpdates || !_libraryReady || _isApplying || IsClosing)
+        if ((!force && !CurrentPreferences.CheckModUpdates) || _checkingUpdates || !_libraryReady || _isApplying || _updatingApplication || IsClosing)
         {
             return;
         }
@@ -16,7 +16,7 @@ public sealed partial class MainWindowViewModel
         {
             foreach (var mod in Mods.ToArray())
             {
-                if (_archiveImportCancellation.IsCancellationRequested || _isApplying)
+                if (_archiveImportCancellation.IsCancellationRequested || _isApplying || _updatingApplication)
                 {
                     return;
                 }
@@ -27,8 +27,8 @@ public sealed partial class MainWindowViewModel
                 }
 
                 var checkedAt = mod.LastCheckedAt;
-                if (checkedAt is not null && checkedAt <= DateTimeOffset.UtcNow &&
-                    DateTimeOffset.UtcNow - checkedAt < TimeSpan.FromHours(6))
+                if (!force && checkedAt is not null && checkedAt <= DateTimeOffset.UtcNow &&
+                    DateTimeOffset.UtcNow - checkedAt < TimeSpan.FromMinutes(30))
                 {
                     continue;
                 }
@@ -59,14 +59,15 @@ public sealed partial class MainWindowViewModel
         catch (OperationCanceledException) when (_archiveImportCancellation.IsCancellationRequested) { }
         catch (Exception error) when (IsLibraryError(error) || error is System.Text.Json.JsonException or KeyNotFoundException)
         {
+            NoticeApplicationRequirement(error);
             mod.SetCheckFailure(error.Message);
         }
-        finally { mod.SetBusy(""); }
+        finally { mod.SetBusy(""); RequestApplicationUpdateDialog(); }
     }
 
     public async Task RunUpdateActionAsync(ModItemViewModel mod)
     {
-        if (_isApplying || IsClosing)
+        if (!CanEditMods)
         {
             return;
         }
@@ -104,14 +105,15 @@ public sealed partial class MainWindowViewModel
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception error) when (IsLibraryError(error) || error is System.Text.Json.JsonException or KeyNotFoundException)
         {
+            NoticeApplicationRequirement(error);
             mod.SetCheckFailure(error.Message);
         }
-        finally { mod.SetBusy(""); }
+        finally { mod.SetBusy(""); RequestApplicationUpdateDialog(); }
     }
 
     public async Task<IReadOnlyList<ModArchive>> GetPreviousVersionsAsync(ModItemViewModel mod)
     {
-        if (_isApplying || IsClosing || !Mods.Contains(mod) || !mod.CanChooseVersion)
+        if (!CanEditMods || !Mods.Contains(mod) || !mod.CanChooseVersion)
         {
             return [];
         }
@@ -133,7 +135,7 @@ public sealed partial class MainWindowViewModel
 
     public async Task UsePreviousVersionAsync(ModItemViewModel mod, ModArchive previous)
     {
-        if (_isApplying || IsClosing || !Mods.Contains(mod) || mod.IsBusy || mod.ToRecord().PackageId == BuiltinMods.IndicatorId)
+        if (!CanEditMods || !Mods.Contains(mod) || mod.IsBusy || mod.ToRecord().PackageId == BuiltinMods.IndicatorId)
         {
             return;
         }
@@ -157,6 +159,14 @@ public sealed partial class MainWindowViewModel
             finally { mod.SetBusy(""); _archiveImportLock.Release(); RefreshCompatibilityActions(); }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
-        catch (Exception error) when (IsLibraryError(error)) { SetStatus(error.Message); }
+        catch (Exception error) when (IsLibraryError(error))
+        {
+            NoticeApplicationRequirement(error);
+            if (error is not SnowPatcher.Core.SnowPatcherUpdateRequiredException)
+            {
+                SetStatus(error.Message);
+            }
+            RequestApplicationUpdateDialog();
+        }
     }
 }

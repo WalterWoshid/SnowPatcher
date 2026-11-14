@@ -1,5 +1,19 @@
 # Application behavior
 
+## SnowPatcher updates
+
+The version button checks GitHub Releases at startup and while the app is open.
+When an update is available, click it to download, verify and restart SnowPatcher.
+Only application files are replaced. Mod ZIPs, game backups and saves are kept.
+Failed installation restores the previous application files.
+
+New mod packages declare their minimum SnowPatcher version. If an update is needed,
+**Update & install** keeps the downloaded ZIP, updates SnowPatcher and resumes the
+installation after restarting. Compatibility checks and backups still run. If the
+game is open or a mod conflicts, installation pauses with an explanation and Retry.
+Cancel stops the update and automatic installation. Formats 1 and 2 remain supported.
+Version 1.0.0 needs one manual application update to receive this flow.
+
 ## Mod library
 
 Add local ZIPs through **Add mods...** or drop them onto the window. SnowPatcher

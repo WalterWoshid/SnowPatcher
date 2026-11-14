@@ -22,7 +22,15 @@ public sealed partial class ModLibraryStore
         try
         {
             var hash = await client.DownloadAsync(release, temporary, progress, cancellationToken).ConfigureAwait(false);
-            var archive = await Task.Run(() => ModArchiveReader.Read(temporary, cancellationToken), cancellationToken).ConfigureAwait(false);
+            ModArchive archive;
+            try
+            { archive = await Task.Run(() => ModArchiveReader.Read(temporary, cancellationToken), cancellationToken).ConfigureAwait(false); }
+            catch (SnowPatcherUpdateRequiredException error)
+            {
+                error.Archive = await RetainDeferredAsync(temporary, error.ModName ?? release.Source.Name,
+                    error.RequiredVersion, release.Source, hash, cancellationToken).ConfigureAwait(false);
+                throw;
+            }
             if (archive.Sha256 != hash)
             {
                 throw new InvalidDataException("The ZIP changed during validation.");

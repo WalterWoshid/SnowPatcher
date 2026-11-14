@@ -19,6 +19,10 @@ Detects your Steam installation, checks mod compatibility and backs up game file
 before applying changes. Drop in SnowPatcher ZIPs or add mod.io links, enable the
 mods you want and click Apply with SnowRunner closed.
 
+Checks for SnowPatcher updates at startup. Click the update button to download and
+restart; mods and backups are kept. Version 1.0.0 needs one manual update first.
+If a mod needs a newer version, **Update & install** finishes its installation after restarting.
+
 Drop a new ZIP to update a mod; click its version to choose an older copy. Existing
 manual changes are preserved when compatible. Legacy manual ZIPs need conversion
 before SnowPatcher can apply them.

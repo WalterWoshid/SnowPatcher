@@ -4,7 +4,7 @@ public sealed partial class MainWindowViewModel
 {
     public async Task AddArchivesAsync(IEnumerable<string> paths, CancellationToken cancellationToken = default)
     {
-        if (_isApplying || IsClosing)
+        if (!CanEditMods)
         {
             return;
         }
@@ -41,24 +41,28 @@ public sealed partial class MainWindowViewModel
                 }
                 catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
                 {
-                    failures.Add($"{Path.GetFileName(path)}: {error.Message}");
+                    NoticeApplicationRequirement(error);
+                    if (error is not SnowPatcher.Core.SnowPatcherUpdateRequiredException)
+                    {
+                        failures.Add($"{Path.GetFileName(path)}: {error.Message}");
+                    }
                 }
             }
 
             RefreshModCount();
             SetStatus(failures.Count > 0
                 ? string.Join(Environment.NewLine, failures)
-                : added > 0
+                : added > 0 || HasModInstallRequest
                     ? ""
                     : "Those ZIPs are already in the list.");
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-        finally { _archiveImportLock.Release(); RefreshCompatibilityActions(); }
+        finally { _archiveImportLock.Release(); RefreshCompatibilityActions(); RequestApplicationUpdateDialog(); }
     }
 
     public async Task AddFromModioAsync(string link, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
     {
-        if (_isApplying || IsClosing)
+        if (_isApplying || _updatingApplication || IsClosing)
         {
             return;
         }
@@ -87,6 +91,11 @@ public sealed partial class MainWindowViewModel
             await AcceptArchiveAsync(download.Archive, download.Source, token);
             SetStatus("");
         }
-        finally { _archiveImportLock.Release(); RefreshCompatibilityActions(); }
+        catch (SnowPatcher.Core.SnowPatcherUpdateRequiredException error)
+        {
+            NoticeApplicationRequirement(error);
+            throw;
+        }
+        finally { _archiveImportLock.Release(); RefreshCompatibilityActions(); RequestApplicationUpdateDialog(); }
     }
 }

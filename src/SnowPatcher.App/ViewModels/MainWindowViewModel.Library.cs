@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using SnowPatcher.Core;
 using SnowPatcher.Core.Mods;
 
 namespace SnowPatcher.App.ViewModels;
@@ -53,7 +54,20 @@ public sealed partial class MainWindowViewModel
                 }
                 catch (Exception error) when (IsLibraryError(error))
                 {
-                    mod = new ModItemViewModel(new ModArchive(record.SourcePath, 0), record, unavailable: true);
+                    mod = new ModItemViewModel(new ModArchive(record.SourcePath, 0), record, unavailable: true,
+                        unavailableReason: error.Message, requiredSnowPatcherVersion: (error as SnowPatcherUpdateRequiredException)?.RequiredVersion);
+                    if (error is SnowPatcherUpdateRequiredException required)
+                    {
+                        var deferred = required.Archive;
+                        if (deferred is null)
+                        {
+                            try
+                            { deferred = await _library.DeferAsync(record.SourcePath, required.ModName ?? record.DisplayName ?? mod.Name, required.RequiredVersion, record.Source, record.Sha256, token); }
+                            catch (Exception retentionError) when (IsLibraryError(retentionError)) { SetStatus(retentionError.Message); }
+                        }
+
+                        NoticeApplicationRequirement(error, deferred);
+                    }
                 }
                 AddMod(mod);
             }
@@ -191,7 +205,7 @@ public sealed partial class MainWindowViewModel
     {
         if (args.PropertyName == nameof(ModItemViewModel.IsEnabled) && !_revertingToggle)
         {
-            if (!SaveLibrary())
+            if (!CanEditMods || !SaveLibrary())
             {
                 _revertingToggle = true;
                 try
@@ -237,7 +251,7 @@ public sealed partial class MainWindowViewModel
 
     public void RemoveMod(ModItemViewModel mod)
     {
-        if (!mod.CanRemove || _isApplying || IsClosing || !Mods.Contains(mod))
+        if (!mod.CanRemove || !CanEditMods || !Mods.Contains(mod))
         {
             return;
         }

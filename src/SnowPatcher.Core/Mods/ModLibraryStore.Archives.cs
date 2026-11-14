@@ -28,7 +28,15 @@ public sealed partial class ModLibraryStore
         {
             await CopyToStagingAsync(sourcePath, temporary, cancellationToken).ConfigureAwait(false);
 
-            var archive = await Task.Run(() => ModArchiveReader.Read(temporary, cancellationToken), cancellationToken).ConfigureAwait(false);
+            ModArchive archive;
+            try
+            { archive = await Task.Run(() => ModArchiveReader.Read(temporary, cancellationToken), cancellationToken).ConfigureAwait(false); }
+            catch (SnowPatcherUpdateRequiredException error)
+            {
+                error.Archive = await RetainDeferredAsync(temporary, error.ModName ?? Path.GetFileNameWithoutExtension(sourcePath),
+                    error.RequiredVersion, null, expectedSha256, cancellationToken).ConfigureAwait(false);
+                throw;
+            }
             if (expectedSha256 is not null && archive.Sha256 != expectedSha256)
             {
                 throw new InvalidDataException("The ZIP changed since it was added. The current library entry was kept.");

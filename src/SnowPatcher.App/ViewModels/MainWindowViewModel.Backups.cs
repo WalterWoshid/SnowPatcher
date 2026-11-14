@@ -19,12 +19,16 @@ public sealed partial class MainWindowViewModel
 
     public Task<BackupRestoreResult> RestoreBackupAsync(ArchiveBackup backup)
     {
-        if (IsClosing)
+        if (_restoreTask is { IsCompleted: false })
         {
-            throw new InvalidOperationException("SnowPatcher is closing.");
+            return _restoreTask;
+        }
+        if (!CanBrowse)
+        {
+            throw new InvalidOperationException("Wait for the current operation before restoring a backup.");
         }
 
-        return _restoreTask is { IsCompleted: false } ? _restoreTask : _restoreTask = RestoreCoreAsync(backup);
+        return _restoreTask = RestoreCoreAsync(backup);
     }
 
     private async Task<BackupRestoreResult> RestoreCoreAsync(ArchiveBackup backup)
@@ -51,6 +55,7 @@ public sealed partial class MainWindowViewModel
         RaisePropertyChanged(nameof(CanRestore));
         RaisePropertyChanged(nameof(CanAddMods));
         RaisePropertyChanged(nameof(CanEditMods));
+        RaisePropertyChanged(nameof(CanUpdateApplication));
         RefreshCompatibilityActions();
     }
 }

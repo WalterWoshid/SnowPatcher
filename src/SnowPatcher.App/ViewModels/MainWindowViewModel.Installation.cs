@@ -83,6 +83,9 @@ public sealed partial class MainWindowViewModel
         Compatibility = null;
         SetCompatibilitySummary("");
         _gameFolder = installation.RootDirectory;
+        try
+        { _preferences?.RememberGameFolder(_gameFolder); }
+        catch (Exception error) when (IsLibraryError(error)) { SetStatus("Could not remember the game folder. " + error.Message); }
         RaisePropertyChanged(nameof(GameFolder));
         RaisePropertyChanged(nameof(HasInstallationDetails));
         Inspection = null;

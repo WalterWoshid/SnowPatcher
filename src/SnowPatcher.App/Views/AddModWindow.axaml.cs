@@ -59,6 +59,7 @@ public partial class AddModWindow : Window
             _closeWhenFinished = true;
         }
         catch (OperationCanceledException) { _closeWhenFinished = true; }
+        catch (SnowPatcher.Core.SnowPatcherUpdateRequiredException) { _closeWhenFinished = true; }
         catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or
                                           InvalidOperationException or System.Text.Json.JsonException or KeyNotFoundException)
         {

@@ -1,0 +1,22 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SnowPatcher.App.Views.ApplicationUpdateWindow"
+        Title="Update SnowPatcher" Width="530" MinWidth="460" SizeToContent="Height"
+        CanResize="False" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+  <Grid Margin="16" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+    <ScrollViewer MaxHeight="180" Margin="0,0,0,12" HorizontalScrollBarVisibility="Disabled">
+      <TextBlock x:Name="IntroductionText" TextWrapping="Wrap" FontWeight="SemiBold" />
+    </ScrollViewer>
+    <TextBlock Grid.Row="1" x:Name="ExplanationText" Margin="0,0,0,16" TextWrapping="Wrap" />
+    <Grid Grid.Row="2" x:Name="ProgressPanel" RowDefinitions="Auto,Auto" RowSpacing="8" Margin="0,0,0,12" IsVisible="False">
+      <TextBlock x:Name="ProgressText" />
+      <ProgressBar Grid.Row="1" x:Name="DownloadProgress" Minimum="0" Maximum="100" Height="14"
+                   AutomationProperties.Name="SnowPatcher update progress" />
+    </Grid>
+    <TextBlock Grid.Row="3" x:Name="FeedbackText" Margin="0,0,0,12" TextWrapping="Wrap" IsVisible="False" />
+    <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" Click="OnCancel" />
+      <Button x:Name="UpdateButton" Content="Update &amp; restart" IsDefault="True" Click="OnUpdate" />
+    </StackPanel>
+  </Grid>
+</Window>

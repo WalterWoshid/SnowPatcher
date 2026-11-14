@@ -11,7 +11,7 @@ public sealed partial class MainWindowViewModel
 
     private async Task StartCompatibilityAsync(bool debounce)
     {
-        if (IsClosing)
+        if (IsClosing || _pendingInstallationRunning && debounce)
         {
             return;
         }
@@ -33,7 +33,7 @@ public sealed partial class MainWindowViewModel
         RefreshCompatibilityActions();
         try
         {
-            if (!CanCheckMods)
+            if (!CanCheckSelection)
             {
                 return;
             }
@@ -116,6 +116,7 @@ public sealed partial class MainWindowViewModel
         RaisePropertyChanged(nameof(CanApply));
         RaisePropertyChanged(nameof(ApplyText));
         RaisePropertyChanged(nameof(ApplyDetail));
+        RaisePropertyChanged(nameof(CanUpdateApplication));
     }
 
     private void SetCompatibilitySummary(string text)
@@ -127,9 +128,9 @@ public sealed partial class MainWindowViewModel
     public Task ApplyModsAsync() => IsClosing ? Task.CompletedTask :
         _applyTask is { IsCompleted: false } ? _applyTask : _applyTask = ApplyCoreAsync();
 
-    private async Task ApplyCoreAsync()
+    private async Task ApplyCoreAsync(bool automatic = false)
     {
-        if (!CanApply)
+        if (!CanApplySelection && !automatic)
         {
             return;
         }
@@ -152,6 +153,12 @@ public sealed partial class MainWindowViewModel
         }
         finally { _isApplying = false; RefreshApplyActions(); }
         await StartCompatibilityAsync(false);
+        if (_acceptedInstallation is { } request && IsPendingInstallationApplied(request))
+        {
+            try
+            { CompletePendingInstallation(); }
+            catch (Exception error) when (IsLibraryError(error)) { message += " Could not clear the saved installation request. " + error.Message; }
+        }
         SetStatus(message);
     }
 
@@ -160,6 +167,7 @@ public sealed partial class MainWindowViewModel
         RaisePropertyChanged(nameof(IsApplying));
         RaisePropertyChanged(nameof(CanEditMods));
         RaisePropertyChanged(nameof(CanAddMods));
+        RaisePropertyChanged(nameof(CanUpdateApplication));
         RefreshBackupActions();
     }
 }
