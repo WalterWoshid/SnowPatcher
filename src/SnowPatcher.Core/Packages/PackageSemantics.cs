@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace SnowPatcher.Core.Packages;
 
-internal static class PackageSemantics
+internal static partial class PackageSemantics
 {
     internal const string NativeMetadataPath = "Sources/BinEditor/meta_desc_ssl.ps";
 
@@ -77,6 +77,13 @@ internal static class PackageSemantics
             }
             switch (operation.Type)
             {
+                case "xml.edit":
+                    if (manifest.MinSnowPatcherVersion is null || PackageManifestReader.CompareVersions(manifest.MinSnowPatcherVersion, "1.3.0") < 0)
+                    {
+                        throw new InvalidDataException("XML edits require minSnowPatcherVersion 1.3.0 or newer.");
+                    }
+                    ValidateXml(operation);
+                    break;
                 case "sso.edit":
                     ValidateSso(operation, RequirePayload);
                     break;

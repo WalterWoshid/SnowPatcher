@@ -86,6 +86,9 @@ try {
             $operations.Add($operation)
         }
     }
+    if (@($operations | Where-Object type -EQ 'xml.edit').Count -gt 0 -and [version]$minimumVersion -lt [version]'1.3.0') {
+        throw 'XML edits need minSnowPatcherVersion 1.3.0 or newer.'
+    }
     $payloadPaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($operation in $operations) {
         if ($operation.Contains('payload')) { [void]$payloadPaths.Add((Get-SnowSafePath $operation.payload)) }
@@ -186,6 +189,9 @@ try {
     else { [IO.File]::Move($lockTemporary, $lockPath) }
     $lockTemporary = $null
     $guardCount=$manifest.checks.Count
+    foreach ($operation in $manifest.operations) {
+        if ($operation.type -in @('sso.edit','strings.edit','xml.edit')) { $guardCount += $operation.edits.Count }
+    }
     if($portable){$guardCount+=$script:SnowPortableFunctions.Count+$script:SnowPortableNative.Count+$script:SnowPortableOperands.Count}
     Write-Host ('Built {0} {1}: {2} operations, {3} compatibility checks.' -f $source.name, $source.version, $operations.Count, $guardCount)
     Write-Output $destination

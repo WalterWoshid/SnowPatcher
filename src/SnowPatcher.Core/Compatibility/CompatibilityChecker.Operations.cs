@@ -73,15 +73,22 @@ public static partial class CompatibilityChecker
                 break;
             case "sso.edit":
             case "strings.edit":
+            case "xml.edit":
                 if (data is null)
                 {
                     throw new CheckFailure("missing", "The text resource is missing.");
                 }
 
-                var text = operation.Type == "sso.edit" ? TextEdits.Sso(data, definition, package, guards, token, activeModCount) : TextEdits.Strings(data, definition, guards);
+                var text = operation.Type switch
+                {
+                    "sso.edit" => TextEdits.Sso(data, definition, package, guards, token, activeModCount),
+                    "xml.edit" => TextEdits.Xml(data, definition, guards, token),
+                    _ => TextEdits.Strings(data, definition, guards)
+                };
+                var kind = operation.Type switch { "sso.edit" => "property", "xml.edit" => "xml-attribute", _ => "string" };
                 foreach (var change in text.Changes)
                 {
-                    claims?.Add(new Claim(result, operation.Id, target, operation.Type == "sso.edit" ? "property" : "string", change.Path, change.Requirement, change.Action + ":" + change.Outcome, 0, 0, false, ""));
+                    claims?.Add(new Claim(result, operation.Id, target, kind, change.Path, change.Requirement, change.Action + ":" + change.Outcome, 0, 0, false, ""));
                 }
 
                 view.Write(target, text.Bytes);

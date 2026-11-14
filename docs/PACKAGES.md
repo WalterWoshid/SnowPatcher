@@ -87,6 +87,7 @@ Unknown formats or layouts stop the operation.
 | `resource.remove` | Existing target must match `beforeSha256`. Remove it. |
 | `sso.edit` | Change selected configuration properties or append unique array items, with explicit old-value checks. |
 | `strings.edit` | Set selected language keys, with explicit absent/old-value checks. |
+| `xml.edit` | Set or remove selected XML attributes, with explicit absent/old-value checks. Requires SnowPatcher 1.3.0. |
 | `sslb.function.edit` | Edit instruction sequences in one named function, preserving the module's shared tables. |
 | `sslb.methods.add` | Add guarded inherited method implementations and their signature/reference records. Format 2 claims the added names and slots; format 1 claims the module layout. |
 
@@ -106,6 +107,22 @@ there too; choosing a generic operation cannot bypass the native-layout check.
 Duplicate SSLB identities inside a bundle are errors.
 
 ## Configuration and language edits
+
+`xml.edit` uses an `edits` array. Each edit has `path` (element names from the
+fragment root), `attribute`, `action` (`set` or `remove`) and a `before` guard.
+Setting requires a string `value`. Guards use `{ "state": "absent" }` or
+`{ "state": "present", "value": "old value" }`. For example:
+
+```json
+{ "action": "set", "path": ["ModelBrand"], "attribute": "ClipCamera", "before": { "state": "absent" }, "value": "false" }
+```
+
+The element path and edited attribute must each match uniquely. Repeated element
+names are ambiguous, rather than positional selectors that might change after an
+update. Disjoint attributes can combine; conflicting edits are reported. Encoding,
+comments, unrelated attributes and other file contents are preserved. Native XML
+fragments and duplicate unrelated stock attributes are supported; DTDs are not.
+XML packages must declare `minSnowPatcherVersion` of at least `1.3.0`.
 
 An `sso.edit` operation contains an `edits` array. Each edit has an `action`, a
 `path` of property names and nonnegative array indices, and a `before` guard.

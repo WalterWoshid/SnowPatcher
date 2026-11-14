@@ -285,14 +285,14 @@ function ConvertTo-SnowAuthorOperation($Definition, $Source, [string]$Variant) {
         $operation.payload = $operation.payload.Replace('{variant}', $Variant)
     }
     if ($operation.Contains('editsFile')) {
-        if ($operation.type -notin @('sso.edit','strings.edit') -or $operation.Contains('edits')) { throw 'Use edits or editsFile on a text operation, not both.' }
+        if ($operation.type -notin @('sso.edit','strings.edit','xml.edit') -or $operation.Contains('edits')) { throw 'Use edits or editsFile on a text operation, not both.' }
         $path = Get-SnowAuthorFile $script:SnowAuthorRoot $operation.editsFile
         $edits = Read-SnowAuthorJson ([IO.File]::ReadAllText($path))
         if ($edits -isnot [array] -or -not $edits.Count) { throw 'editsFile must contain a nonempty JSON array of edits.' }
         $operation.edits = $edits
         $operation.Remove('editsFile')
     }
-    if ($operation.type -in @('sso.edit','strings.edit')) {
+    if ($operation.type -in @('sso.edit','strings.edit','xml.edit')) {
         foreach ($edit in $operation.edits) {
             if ($edit.before.state -eq 'present' -and -not $edit.before.Contains('value')) {
                 throw "Operation '$($operation.id)' needs before.value for a present old-value guard."
@@ -391,7 +391,7 @@ function ConvertTo-SnowAuthorOperation($Definition, $Source, [string]$Variant) {
         if ($operation.type -ne 'sso.edit' -or $operation.Contains('beforeSha256') -or $indexed) { Set-SnowAuthorHash $operation 'beforeSha256' (Get-SnowHash $bytes) }
     } elseif ($operation.type -eq 'resource.add') {
         if ($null -ne (Get-SnowAuthorResource $operation.target -Optional)) { throw 'The resource to add already exists.' }
-    } elseif ($operation.type -eq 'strings.edit') { $null = Get-SnowAuthorResource $operation.target }
+    } elseif ($operation.type -in @('strings.edit','xml.edit')) { $null = Get-SnowAuthorResource $operation.target }
     else { throw "Unsupported operation '$($operation.type)'." }
     return ,$operation
 }
