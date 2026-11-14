@@ -9,6 +9,11 @@ internal static class PackageSemantics
 
     public static void Validate(PackageManifest manifest)
     {
+        if (manifest.MinSnowPatcherVersion is { } minimum && SnowPatcherVersion.Compare(minimum, "1.1.0") < 0)
+        {
+            throw new InvalidDataException("Package format 3 requires minSnowPatcherVersion 1.1.0 or newer.");
+        }
+
         if (manifest.ModioUrl is not null && Mods.ModioPage.Parse(manifest.ModioUrl) is null)
         {
             throw new InvalidDataException("modioUrl must be an HTTPS SnowRunner mod page on mod.io.");

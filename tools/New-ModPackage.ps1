@@ -42,11 +42,13 @@ try {
     $source = Read-SnowAuthorJson ([IO.File]::ReadAllText($sourcePath))
     $script:SnowAuthorSource = $source
     foreach ($key in $source.Keys) {
-        if ($key -notin @('authoringVersion','id','name','version','authors','description','modioUrl','testedBuilds','dependencies','conflicts','variants','targets','checks','include','operations','propertyChecks','functionChecks')) { throw "Unknown authoring field '$key'." }
+        if ($key -notin @('authoringVersion','id','name','version','minSnowPatcherVersion','authors','description','modioUrl','testedBuilds','dependencies','conflicts','variants','targets','checks','include','operations','propertyChecks','functionChecks')) { throw "Unknown authoring field '$key'." }
     }
     if (-not $source.Contains('authoringVersion') -or $source.authoringVersion -ne 1) { throw 'Expected authoringVersion 1.' }
     foreach ($key in @('id','name','version','authors','operations')) { if (-not $source.Contains($key) -or -not $source[$key]) { throw "Missing source field '$key'." } }
     if ($source.id -cnotmatch '^[a-z0-9]+(?:[.-][a-z0-9]+)*$' -or $source.version -cnotmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') { throw 'Use a lowercase mod ID and a MAJOR.MINOR.PATCH version.' }
+    $minimumVersion = if ($source.Contains('minSnowPatcherVersion')) { [string]$source.minSnowPatcherVersion } else { '1.1.0' }
+    if ($minimumVersion -cnotmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' -or $minimumVersion -cmatch '^(0\.|1\.0\.)') { throw 'Package format 3 needs minSnowPatcherVersion 1.1.0 or newer.' }
     if ($source.Contains('modioUrl') -and ($source.modioUrl -isnot [string] -or $source.modioUrl.Length -gt 2048 -or $source.modioUrl -cnotmatch '\Ahttps://(?:www\.)?mod\.io/g/snowrunner/m/[A-Za-z0-9][A-Za-z0-9_-]*/?\z')) { throw 'modioUrl must be an HTTPS SnowRunner mod page on mod.io.' }
     if ($source.Contains('variants') -and @($source.variants | Sort-Object -Unique).Count -ne $source.variants.Count) { throw 'Duplicate bundle variant.' }
     $script:SnowAuthorBytes = @{}
@@ -106,7 +108,7 @@ try {
         $files.Add(@{ path=$path; sha256=(Get-SnowHash $bytes); size=$bytes.Length })
         if (Test-SnowCompiledPayload $bytes) { $hasCompiledPayload=$true; Add-SnowAuthorCheck @{ file='Sources/BinEditor/meta_desc_ssl.ps'; members=@() } }
     }
-    $manifest = [ordered]@{ formatVersion=$(if($portable){2}else{1}) }
+    $manifest = [ordered]@{ formatVersion=3; minSnowPatcherVersion=$minimumVersion }
     foreach ($key in @('id','name','version','authors','description','modioUrl','testedBuilds','dependencies','conflicts')) {
         if ($source.Contains($key)) { $manifest[$key] = $source[$key] }
     }

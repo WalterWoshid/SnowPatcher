@@ -37,7 +37,8 @@ public sealed record PackageManifest(
     ImmutableArray<PackageFile> Files,
     ImmutableArray<PackageOperation> Operations,
     JsonElement? Relocations = null,
-    string? ModioUrl = null);
+    string? ModioUrl = null,
+    string? MinSnowPatcherVersion = null);
 
 public sealed record PackageDependency(string Id, string MinVersion, string? MaxVersionExclusive);
 public sealed record PackageFile(string Path, string Sha256, long Size);

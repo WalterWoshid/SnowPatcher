@@ -200,6 +200,11 @@ converted package to downloads of the original manual mod.
 The separate Deliver Unpacked Cargo conversion uses configuration edits and
 credits [nakedDave's original mod](https://mod.io/g/snowrunner/m/deliver-unpacked-cargo).
 
+Set `minSnowPatcherVersion` in the authoring source when a mod needs a newer
+SnowPatcher release. New packages use format `3` and default to `1.1.0`. Older
+packages still work; a requirement above the running version blocks import with
+an update message.
+
 Targets can use these short forms:
 
 ```json

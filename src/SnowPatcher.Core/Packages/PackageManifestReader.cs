@@ -18,10 +18,16 @@ internal static class PackageManifestReader
             using var document = JsonDocument.Parse(json, new JsonDocumentOptions { MaxDepth = 64 });
             var root = document.RootElement;
             CheckJson(root);
-            if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("formatVersion", out var version) &&
-                version.ValueKind == JsonValueKind.Number && version.TryGetDecimal(out var number) && number is not (1 or 2))
+            if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("minSnowPatcherVersion", out var minimum) &&
+                minimum.ValueKind == JsonValueKind.String)
             {
-                throw new InvalidDataException("Unsupported mod package format. This build reads formatVersion 1 and 2.");
+                SnowPatcherVersion.Require(minimum.GetString()!, root.TryGetProperty("name", out var name) && name.ValueKind == JsonValueKind.String ? name.GetString() : null);
+            }
+
+            if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("formatVersion", out var version) &&
+                version.ValueKind == JsonValueKind.Number && version.TryGetDecimal(out var number) && number is not (1 or 2 or 3))
+            {
+                throw new InvalidDataException("Unsupported mod package format. Update SnowPatcher. This build reads formatVersion 1, 2 and 3.");
             }
 
             var result = Schema.Value.Evaluate(root, new EvaluationOptions { OutputFormat = OutputFormat.List });
@@ -48,7 +54,8 @@ internal static class PackageManifestReader
                 Items(root, "operations").Select(x => new PackageOperation(SingleLine(x.GetProperty("id").GetString()!),
                     x.GetProperty("type").GetString()!, Target(x.GetProperty("target")), x.Clone())).ToImmutableArray(),
                 root.TryGetProperty("relocations", out var relocations) ? relocations.Clone() : null,
-                root.TryGetProperty("modioUrl", out var modioUrl) ? modioUrl.GetString() : null);
+                root.TryGetProperty("modioUrl", out var modioUrl) ? modioUrl.GetString() : null,
+                root.TryGetProperty("minSnowPatcherVersion", out minimum) ? minimum.GetString() : null);
             PackageSemantics.Validate(manifest);
             return manifest;
         }

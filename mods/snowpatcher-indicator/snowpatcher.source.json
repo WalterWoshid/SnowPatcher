@@ -2,7 +2,7 @@
   "authoringVersion": 1,
   "id": "snowpatcher-indicator",
   "name": "SnowPatcher Indicator",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "authors": [
     "WalterWoshid"
   ],
@@ -405,5 +405,6 @@
         "y"
       ]
     }
-  ]
+  ],
+  "minSnowPatcherVersion": "1.1.0"
 }

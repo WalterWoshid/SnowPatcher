@@ -1,6 +1,6 @@
 # Mod package format
 
-SnowPatcher reads formats 1 and 2 and checks packages before applying them.
+SnowPatcher reads formats 1, 2 and 3 and checks packages before applying them.
 SnowPatcher validates package structure, references and payload integrity on
 import, then checks enabled packages against the installed game and each other.
 Applying preserves the starting files and uses saved baselines and a recovery journal. Existing
@@ -31,7 +31,8 @@ The manifest contains:
 
 | Field | Purpose |
 |---|---|
-| `formatVersion` | `1` for exact table guards, `2` for generated portable script patches. Unknown versions and fields are errors. |
+| `formatVersion` | `3` adds the required SnowPatcher version. Formats `1` and `2` remain readable. Unknown versions and fields are errors. |
+| `minSnowPatcherVersion` | Required in format `3`. A `MAJOR.MINOR.PATCH` minimum, checked before loading patch operations. Format `3` needs SnowPatcher `1.1.0` or newer. |
 | `id` | Stable lowercase mod ID, such as `walterwoshid.repair-transfer`. |
 | `name`, `version`, `authors` | Mod identity. Release versions use `MAJOR.MINOR.PATCH` without leading zeroes. |
 | `modioUrl` | Optional HTTPS link to the mod's SnowRunner page on mod.io. Makes its name clickable in the list; does not configure downloads or update checks. |

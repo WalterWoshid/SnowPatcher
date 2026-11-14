@@ -21,7 +21,8 @@
     "formatVersion": {
       "enum": [
         1,
-        2
+        2,
+        3
       ]
     },
     "id": {
@@ -187,6 +188,9 @@
       "type": "string",
       "maxLength": 2048,
       "pattern": "^https://(?:www\\.)?mod\\.io/g/snowrunner/m/[A-Za-z0-9][A-Za-z0-9_-]*/?$"
+    },
+    "minSnowPatcherVersion": {
+      "$ref": "#/$defs/version"
     }
   },
   "$defs": {
@@ -1149,6 +1153,22 @@
       "if": {
         "properties": {
           "formatVersion": {
+            "const": 1
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "required": [
+            "relocations"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "formatVersion": {
             "const": 2
           }
         }
@@ -1157,11 +1177,25 @@
         "required": [
           "relocations"
         ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "formatVersion": {
+            "const": 3
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "minSnowPatcherVersion"
+        ]
       },
       "else": {
         "not": {
           "required": [
-            "relocations"
+            "minSnowPatcherVersion"
           ]
         }
       }

@@ -2,6 +2,7 @@
   "authoringVersion": 1,
   "id": "example.authoring",
   "name": "Authoring example",
+  "minSnowPatcherVersion": "1.1.0",
   "version": "1.0.0",
   "authors": ["SnowPatcher contributors"],
   "description": "Adds an unused text file to demonstrate packaging.",
