@@ -24,7 +24,7 @@ public sealed partial class MainWindowViewModel
     public string? PendingGameFolder => _acceptedInstallation?.GameFolder;
     public bool NeedsNewerApplication => RequiredSnowPatcherVersion is { } minimum && SnowPatcherVersion.Compare(SnowPatcherVersion.Current, minimum) < 0;
     public bool CanResumeModInstallation => _acceptedInstallation is { } request &&
-        (!request.Automatic || CurrentPreferences.AutomaticallyUpdateMods) &&
+        (!request.Automatic || CurrentPreferences.AutomaticallyUpdateMods && !AutomaticActionsPaused) &&
         request.Archives.All(a => SnowPatcherVersion.Compare(a.RequiredVersion, SnowPatcherVersion.Current) <= 0);
     public string PendingInstallationText => _pendingInstallationText;
 
@@ -139,7 +139,7 @@ public sealed partial class MainWindowViewModel
 
             SetPendingInstallationText("Checking game files and mod compatibility...");
             await StartCompatibilityAsync(false);
-            if (request.Automatic && (!CurrentPreferences.AutomaticallyUpdateMods))
+            if (request.Automatic && (!CurrentPreferences.AutomaticallyUpdateMods || AutomaticActionsPaused))
             {
                 SetPendingInstallationText("Automatic installation is paused. Click Apply to finish manually, or enable automatic updates again.");
                 return false;
@@ -147,7 +147,7 @@ public sealed partial class MainWindowViewModel
             if (CanApplySelection)
             {
                 SetPendingInstallationText("Backing up game files and installing mods...");
-                _applyTask = ApplyCoreAsync(automatic: false);
+                _applyTask = ApplyCoreAsync(automatic: _automaticWork);
                 await _applyTask;
             }
 

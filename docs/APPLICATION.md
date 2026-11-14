@@ -1,11 +1,34 @@
 # Application behavior
 
+## Preferences and background checks
+
+**Options > Preferences** separates update checks from automatic installation.
+Checks and closing to the tray are on by default. Automatic installation, system startup
+and starting minimized are off. Game updates notify you when mods need reapplying.
+
+Background mode keeps checking after the window is closed. Use the tray menu to
+open SnowPatcher, change preferences or exit. **File > Exit** always quits. A second
+launch opens the existing window. Startup registration is for the current user.
+
+Game files are checked for changes once a minute; application and mod.io updates
+are checked every 30 minutes while SnowPatcher is running. Notifications are quiet
+and repeated checks do not repeat an alert. Completion notifications can be disabled.
+
+Automatic reapplication uses the last applied selection. Manual selection changes,
+conflicts and interrupted transactions require review. Game writes wait for
+SnowRunner to close and Steam to finish. Automatic mod updates are checked together
+before replacing the working versions; previous ZIPs and game backups are retained.
+Queued automatic updates stop if the mod selection or game folder changes.
+**Options > Pause automatic actions** pauses the current session without disabling
+checks. A file transaction already in progress is allowed to finish.
+
 ## SnowPatcher updates
 
 The version button checks GitHub Releases at startup and while the app is open.
 When an update is available, click it to download, verify and restart SnowPatcher.
 Only application files are replaced. Mod ZIPs, game backups and saves are kept.
 Failed installation restores the previous application files.
+Background updates postpone restarting if you reopen the app or pause automatic actions.
 
 New mod packages declare their minimum SnowPatcher version. If an update is needed,
 **Update & install** keeps the downloaded ZIP, updates SnowPatcher and resumes the

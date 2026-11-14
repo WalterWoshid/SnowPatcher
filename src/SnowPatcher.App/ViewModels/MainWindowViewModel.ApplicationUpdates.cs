@@ -42,7 +42,7 @@ public sealed partial class MainWindowViewModel
     public string? AvailableApplicationVersion => _applicationRelease?.Version;
     public bool HasSuitableApplicationUpdate => _applicationRelease is { } release &&
         (RequiredSnowPatcherVersion is not { } minimum || SnowPatcherVersion.Compare(release.Version, minimum) >= 0);
-    public bool CanUpdateApplication => !IsClosing && !_updatingApplication && !_checkingApplicationUpdate && !_pendingInstallationRunning && !_isApplying && !_isRestoring && !_isBackingUp &&
+    public bool CanUpdateApplication => !IsClosing && !_updatingApplication && !_checkingApplicationUpdate && !_automaticWork && !_pendingInstallationRunning && !_isApplying && !_isRestoring && !_isBackingUp &&
         !_isCheckingCompatibility && _archiveImportLock.CurrentCount > 0 && !Mods.Any(m => m.IsBusy);
 
     public Task CheckApplicationUpdatesAsync() => IsClosing || _updatingApplication ? Task.CompletedTask :

@@ -5,13 +5,13 @@ namespace SnowPatcher.App.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
-    public Task CheckCompatibilityAsync() => StartCompatibilityAsync(false);
+    public Task CheckCompatibilityAsync() => _automaticWork ? Task.CompletedTask : StartCompatibilityAsync(false);
 
     private void RequestCompatibilityCheck() => _ = StartCompatibilityAsync(true);
 
     private async Task StartCompatibilityAsync(bool debounce)
     {
-        if (IsClosing || _pendingInstallationRunning && debounce)
+        if (IsClosing || (_automaticWork || _pendingInstallationRunning) && debounce)
         {
             return;
         }
@@ -125,12 +125,12 @@ public sealed partial class MainWindowViewModel
         RaisePropertyChanged(nameof(StatusText));
     }
 
-    public Task ApplyModsAsync() => IsClosing ? Task.CompletedTask :
+    public Task ApplyModsAsync() => IsClosing || _automaticWork ? Task.CompletedTask :
         _applyTask is { IsCompleted: false } ? _applyTask : _applyTask = ApplyCoreAsync();
 
     private async Task ApplyCoreAsync(bool automatic = false)
     {
-        if (!CanApplySelection && !automatic)
+        if (!CanApplySelection || _automaticWork && !automatic)
         {
             return;
         }

@@ -70,19 +70,19 @@ public sealed partial class MainWindowViewModel : ObservableObject, IAsyncDispos
     public string BuildDetail => _buildDetail;
     public InstallationInspection? Inspection
     { get; private set; }
-    public bool CanBrowse => !_isBackingUp && !_isRestoring && !_isApplying && !_updatingApplication && !_pendingInstallationRunning && !IsClosing;
+    public bool CanBrowse => !_isBackingUp && !_isRestoring && !_isApplying && !_updatingApplication && !_automaticWork && !_pendingInstallationRunning && !IsClosing;
     public bool CanRestore => _hasBackups && CanBrowse;
     public bool IsRestoring => _isRestoring;
     public bool CanAddMods => _libraryReady && CanEditMods;
-    public bool CanEditMods => !_isApplying && !_isRestoring && !_updatingApplication && !_pendingInstallationRunning && !IsClosing;
+    public bool CanEditMods => !_isApplying && !_isRestoring && !_updatingApplication && !_automaticWork && !_pendingInstallationRunning && !IsClosing;
     public bool IsApplying => _isApplying;
-    public bool CanApply => !_pendingInstallationRunning && CanApplySelection;
+    public bool CanApply => !_automaticWork && !_pendingInstallationRunning && CanApplySelection;
     private bool CanApplySelection => !IsClosing && _patchCheck?.CanApply == true && !_isApplying && !_isBackingUp && !_isRestoring && !_isCheckingCompatibility && !_updatingApplication &&
         !Mods.Any(m => m.IsBusy || (m.IsEnabled && m.IsUnavailable)) && _archiveImportLock.CurrentCount > 0;
     public string ApplyText => _isApplying ? "Applying..." : _patchCheck?.NeedsRecovery == true ? "Recover" : "Apply";
     public string ApplyDetail => _patchCheck?.BlockReason ?? "Apply the enabled mods. Existing files are backed up first.";
     public bool IsClosing => _isClosing;
-    public bool CanCheckMods => !_pendingInstallationRunning && CanCheckSelection;
+    public bool CanCheckMods => !_automaticWork && !_pendingInstallationRunning && CanCheckSelection;
     private bool CanCheckSelection => _libraryReady && GameFolder.Length > 0 && Inspection is not null &&
         !_isCheckingCompatibility && !_isBackingUp && !_isRestoring && !_isApplying && !_updatingApplication && !IsClosing;
     public string CheckModsText => _isCheckingCompatibility ? "Checking..." : "Check mods";
@@ -118,6 +118,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IAsyncDispos
             if (_restoreTask is not null)
             {
                 await _restoreTask;
+            }
+            if (_automaticTask is not null)
+            {
+                await _automaticTask;
             }
             if (_applicationCheckTask is not null)
             {

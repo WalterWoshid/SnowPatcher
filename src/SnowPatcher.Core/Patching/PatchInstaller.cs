@@ -6,7 +6,8 @@ using SnowPatcher.Core.Steam;
 
 namespace SnowPatcher.Core.Patching;
 
-public sealed record PatchCheckResult(CompatibilityReport Report, bool CanApply, bool HasPendingChanges, string? BlockReason, bool NeedsRecovery = false);
+public sealed record PatchCheckResult(CompatibilityReport Report, bool CanApply, bool HasPendingChanges, string? BlockReason, bool NeedsRecovery = false,
+    bool GameNeedsReapply = false, bool MatchesAppliedSelection = false);
 public sealed record PatchApplyResult(bool Changed, int FileCount, string BackupDirectory, bool Recovered = false);
 public sealed partial class PatchInstaller
 {

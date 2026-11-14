@@ -4,6 +4,8 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using SnowPatcher.App.Services;
+using SnowPatcher.App.Services.Desktop;
 using SnowPatcher.App.ViewModels;
 using SnowPatcher.Core;
 using SnowPatcher.Core.Backups;
@@ -12,12 +14,15 @@ namespace SnowPatcher.App.Views;
 
 public partial class MainWindow : Window
 {
-    private readonly DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromMinutes(30) };
+    private readonly DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromMinutes(1) };
+    private readonly MaintenanceCoordinator _maintenance;
     private readonly IBrush? _normalListBorder;
     private bool _closing;
     private bool _closeApproved;
     private bool _forceExit;
+    private bool _maintenanceRunning;
     private Task? _initializationTask;
+    public DesktopSession? Session { get; internal set; }
     internal MainWindowViewModel Model => ViewModel;
     public bool IsInBackground => !IsVisible || WindowState == WindowState.Minimized;
     public MainWindow() : this(new MainWindowViewModel()) { }
@@ -26,6 +31,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = viewModel;
+        _maintenance = new MaintenanceCoordinator(viewModel);
         _normalListBorder = ModsBorder.BorderBrush;
         AddHandler(DragDrop.DragEnterEvent, OnDragOver, RoutingStrategies.Bubble, handledEventsToo: true);
         AddHandler(DragDrop.DragOverEvent, OnDragOver, RoutingStrategies.Bubble, handledEventsToo: true);
@@ -34,7 +40,7 @@ public partial class MainWindow : Window
         ViewModel.ApplicationUpdateRequested += OnApplicationUpdateRequested;
         Opened += async (_, _) => await InitializeWindowAsync();
         Activated += async (_, _) => await PresentPendingDialogsAsync();
-        _updateTimer.Tick += async (_, _) => await ViewModel.CheckUpdatesAsync();
+        _updateTimer.Tick += async (_, _) => await RunMaintenanceAsync();
         Closed += (_, _) =>
         {
             _updateTimer.Stop();
@@ -53,6 +59,11 @@ public partial class MainWindow : Window
         }
 
         args.Cancel = true;
+        if (!_forceExit && args.CloseReason == WindowCloseReason.WindowClosing && Session?.BackgroundAvailable == true && ViewModel.CurrentPreferences.RunInBackground)
+        {
+            Hide();
+            return;
+        }
         if (_closing || !_forceExit && (ViewModel.IsRestoring || ViewModel.IsApplying))
         {
             return;

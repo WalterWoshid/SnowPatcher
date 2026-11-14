@@ -1,5 +1,6 @@
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using SnowPatcher.App.Services;
 using SnowPatcher.Core.Updates;
 
 namespace SnowPatcher.App.Views;
@@ -31,11 +32,12 @@ public partial class MainWindow
 
         _updateTimer.Start();
         await PresentPendingDialogsAsync();
+        await RunMaintenanceAsync();
     }
 
     public async Task PresentPendingDialogsAsync()
     {
-        if (!_readyForUpdatePrompts || _showingUpdateDialog || IsInBackground || ViewModel.IsClosing || OwnedWindows.Count > 0)
+        if (!_readyForUpdatePrompts || _showingUpdateDialog || _maintenanceRunning || IsInBackground || ViewModel.IsClosing || OwnedWindows.Count > 0)
         {
             return;
         }
@@ -52,7 +54,50 @@ public partial class MainWindow
         }
     }
 
-
+    private async Task RunMaintenanceAsync()
+    {
+        if (_maintenanceRunning || !_readyForUpdatePrompts || ViewModel.IsClosing || OwnedWindows.Count > 0)
+        {
+            return;
+        }
+        _maintenanceRunning = true;
+        try
+        {
+            var result = await _maintenance.RunAsync(IsInBackground, ViewModel.AutomaticActionsPaused);
+            if (ViewModel.IsClosing)
+            {
+                return;
+            }
+            foreach (var notice in result.Notices)
+            {
+                Session?.Notify(notice);
+            }
+            if (result.ShowApplication)
+            {
+                Session?.Show();
+            }
+            if (result.ApplicationUpdate is { } update)
+            {
+                try
+                {
+                    if (!IsInBackground || OwnedWindows.Count > 0 || ViewModel.AutomaticActionsPaused ||
+                        !ViewModel.CurrentPreferences.AutomaticallyUpdateApplication || ViewModel.IsGameRunning)
+                    {
+                        ViewModel.PostponeApplicationUpdate(update);
+                        return;
+                    }
+                    await ApplicationUpdateService.StartHelperAsync(update);
+                    await CloseForUpdateAsync();
+                }
+                catch (Exception error) when (error is IOException or OperationCanceledException or InvalidOperationException or System.ComponentModel.Win32Exception)
+                {
+                    ViewModel.CancelApplicationUpdate(error.Message);
+                    Session?.Notify(new UserNotice("restart-failed:" + error.Message, "SnowPatcher could not restart", error.Message, true));
+                }
+            }
+        }
+        finally { _maintenanceRunning = false; }
+    }
 
     private async Task CloseForUpdateAsync()
     {
@@ -64,8 +109,10 @@ public partial class MainWindow
 
     private void OnApplicationUpdateRequested(object? sender, EventArgs args)
     {
-        if (IsInBackground)
+        if (IsInBackground || _maintenanceRunning)
         {
+            Session?.Notify(new UserNotice("requires-app:" + ViewModel.RequiredSnowPatcherVersion + ViewModel.RequestedModNames,
+                "A mod needs a newer SnowPatcher", "Open SnowPatcher to finish installing " + ViewModel.RequestedModNames + ".", true));
             return;
         }
         if (!_readyForUpdatePrompts || _updatePromptQueued || _showingUpdateDialog || ViewModel.IsClosing)

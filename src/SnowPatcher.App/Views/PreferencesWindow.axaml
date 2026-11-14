@@ -1,0 +1,48 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SnowPatcher.App.ViewModels" x:Class="SnowPatcher.App.Views.PreferencesWindow"
+        x:DataType="vm:PreferencesViewModel" Title="Preferences" Width="580" SizeToContent="Height"
+        CanResize="False" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+  <Grid Margin="12" RowDefinitions="Auto,Auto,Auto" RowSpacing="12">
+    <TabControl x:Name="PreferenceTabs">
+      <TabItem Header="General">
+        <StackPanel Margin="12,16,12,8" Spacing="10">
+          <TextBlock Text="Startup" FontWeight="SemiBold" />
+          <CheckBox Content="{Binding StartupLabel}" IsChecked="{Binding StartWithSystem, Mode=TwoWay}" IsEnabled="{Binding SupportsStartup}" />
+          <CheckBox Content="Start minimized" IsChecked="{Binding StartMinimized, Mode=TwoWay}" />
+          <CheckBox Content="Keep running in the system tray when closed" IsChecked="{Binding RunInBackground, Mode=TwoWay}" />
+          <TextBlock Text="Use File &gt; Exit to stop background checks." Foreground="#555555" Margin="24,-4,0,8" />
+          <TextBlock Text="Notifications" FontWeight="SemiBold" />
+          <CheckBox Content="Notify when updates or mods need attention" IsChecked="{Binding NotifyAttention, Mode=TwoWay}" />
+          <CheckBox Content="Notify after automatic updates or mod application" IsChecked="{Binding NotifyCompleted, Mode=TwoWay}" />
+        </StackPanel>
+      </TabItem>
+      <TabItem Header="Updates">
+        <StackPanel Margin="12,16,12,8" Spacing="10">
+          <TextBlock Text="SnowPatcher" FontWeight="SemiBold" />
+          <CheckBox Content="Check for application updates" IsChecked="{Binding CheckApplicationUpdates, Mode=TwoWay}" />
+          <CheckBox Content="Install automatically while minimized or in the tray" Margin="24,0,0,8"
+                    IsChecked="{Binding AutomaticallyUpdateApplication, Mode=TwoWay}" IsEnabled="{Binding CheckApplicationUpdates}" />
+          <TextBlock Text="Mods" FontWeight="SemiBold" />
+          <CheckBox Content="Check mod.io for mod updates" IsChecked="{Binding CheckModUpdates, Mode=TwoWay}" />
+          <CheckBox Content="Automatically update and apply enabled mods" Margin="24,0,0,8"
+                    IsChecked="{Binding AutomaticallyUpdateMods, Mode=TwoWay}" IsEnabled="{Binding CheckModUpdates}" />
+          <TextBlock Text="After SnowRunner updates" FontWeight="SemiBold" />
+          <ComboBox SelectedIndex="{Binding GameUpdateAction, Mode=TwoWay}" HorizontalAlignment="Stretch"
+                    AutomationProperties.Name="After SnowRunner updates">
+            <ComboBoxItem Content="Notify me when mods need reapplying" />
+            <ComboBoxItem Content="Show SnowPatcher when mods need reapplying" />
+            <ComboBoxItem Content="Reapply compatible mods automatically" />
+          </ComboBox>
+          <TextBlock Text="Automatic changes wait for SnowRunner to close. Compatibility checks and backups always run."
+                     TextWrapping="Wrap" Foreground="#555555" Margin="0,2,0,0" />
+        </StackPanel>
+      </TabItem>
+    </TabControl>
+    <TextBlock Grid.Row="1" x:Name="ErrorText" Foreground="DarkRed" TextWrapping="Wrap" IsVisible="False" />
+    <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+      <Button Content="Defaults" Click="OnDefaults" />
+      <Button Grid.Column="2" Content="Cancel" IsCancel="True" Click="OnCancel" />
+      <Button Grid.Column="3" Content="Save" IsDefault="True" Click="OnSave" />
+    </Grid>
+  </Grid>
+</Window>

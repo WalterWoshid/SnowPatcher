@@ -8,7 +8,26 @@
         MinWidth="720" MinHeight="400"
         DragDrop.AllowDrop="True"
         WindowStartupLocation="CenterScreen">
-  <Grid Margin="12" RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="10">
+  <DockPanel>
+    <Menu DockPanel.Dock="Top" Margin="0,0,0,2">
+      <MenuItem Header="_File">
+        <MenuItem Header="_Add mods..." Click="OnAddMods" IsEnabled="{Binding CanAddMods}" />
+        <MenuItem Header="_Backups..." Click="OnRestoreBackup" IsEnabled="{Binding CanRestore}" />
+        <Separator />
+        <MenuItem Header="E_xit" Click="OnExit" />
+      </MenuItem>
+      <MenuItem Header="_Options">
+        <MenuItem Header="_Preferences..." Click="OnPreferences" />
+        <MenuItem Header="_Pause automatic actions" ToggleType="CheckBox" IsChecked="{Binding AutomaticActionsPaused, Mode=TwoWay}" />
+      </MenuItem>
+      <MenuItem Header="_Help">
+        <MenuItem Header="Check for SnowPatcher _updates..." Click="OnApplicationUpdate" />
+        <MenuItem Header="Check for _mod updates" Click="OnCheckModUpdates" />
+        <Separator />
+        <MenuItem Header="_GitHub" Click="OnProjectPage" />
+      </MenuItem>
+    </Menu>
+    <Grid Margin="12" RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="10">
     <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="5" ColumnSpacing="8">
       <TextBlock Text="SnowRunner folder" />
       <TextBox Grid.Row="1" x:Name="GameFolderBox"
@@ -153,5 +172,6 @@
       <Button Grid.Column="3" x:Name="ApplyButton" Content="{Binding ApplyText}" IsEnabled="{Binding CanApply}"
               ToolTip.Tip="{Binding ApplyDetail}" Click="OnApplyMods" />
     </Grid>
-  </Grid>
+    </Grid>
+  </DockPanel>
 </Window>

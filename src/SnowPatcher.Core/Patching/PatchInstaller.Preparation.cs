@@ -115,7 +115,10 @@ public sealed partial class PatchInstaller
             reason ??= "Resolve the compatibility issues before applying mods.";
         }
 
-        return new Prepared(new PatchCheckResult(report, reason is null && pending && steam is not null, pending, reason), steam, previous, baseline, outputs, mods);
+        var gameChanged = previous is not null && (previous.BuildId != steam?.BuildId || previous.DepotFingerprint != steam?.DepotFingerprint ||
+            previous.Files.Any(f => f.OutputHash != (observed.TryGetValue(f.Path, out var hash) ? hash : PatchStorage.Hash(PatchStorage.ReadFile(PatchStorage.GamePath(installation, f.Path))))));
+        return new Prepared(new PatchCheckResult(report, reason is null && pending && steam is not null, pending, reason,
+            GameNeedsReapply: gameChanged && pending, MatchesAppliedSelection: previous is not null && SameMods(previous.Mods, mods)), steam, previous, baseline, outputs, mods);
     }
 
     private static bool SameMods(ManagedMod[] a, ManagedMod[] b) => a.Length == b.Length && a.Zip(b).All(pair => pair.First.Id == pair.Second.Id && pair.First.Version == pair.Second.Version && pair.First.ArchiveHash == pair.Second.ArchiveHash);
