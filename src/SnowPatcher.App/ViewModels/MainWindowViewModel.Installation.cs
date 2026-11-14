@@ -1,4 +1,5 @@
 using SnowPatcher.Core;
+using SnowPatcher.Core.Installations;
 using SnowPatcher.Core.Steam;
 
 namespace SnowPatcher.App.ViewModels;
@@ -12,7 +13,7 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        var installation = new GameInstallation(Path.GetFullPath(path));
+        var installation = GameInstallationLocator.Resolve(path);
         if (!installation.HasInitialPak && !_patchInstaller.HasManagedState(installation))
         {
             SetStatus("That folder does not contain SnowRunner's initial.pak. Choose the SnowRunner installation folder.");
@@ -35,7 +36,7 @@ public sealed partial class MainWindowViewModel
 
         try
         {
-            var installation = await Task.Run(() => _patchInstaller.FindRecoverableInstallation() ?? SteamInstallationLocator.Find());
+            var installation = await Task.Run(() => _patchInstaller.FindRecoverableInstallation() ?? GameInstallationLocator.Find());
             // A folder chosen through Browse while detection runs takes precedence.
             if (_folderSelectionVersion != selectionVersion || IsClosing)
             {
@@ -96,7 +97,7 @@ public sealed partial class MainWindowViewModel
 
         try
         {
-            var result = await Task.Run(() => SteamInstallationVerifier.InspectAsync(installation, cancellation.Token), cancellation.Token);
+            var result = await Task.Run(() => GameInstallationVerifier.InspectAsync(installation, cancellation.Token), cancellation.Token);
             if (selectionVersion != _folderSelectionVersion || cancellation.IsCancellationRequested)
             {
                 return;
@@ -135,7 +136,7 @@ public sealed partial class MainWindowViewModel
             }
 
             RequestCompatibilityCheck();
-            if (result.BuildId is not null)
+            if (result.BuildId is not null && result.Store == GameStore.Steam)
             {
                 var releasedAt = await SteamReleaseInfo.GetReleaseTimeAsync(result.BuildId, cancellation.Token);
                 if (selectionVersion != _folderSelectionVersion || cancellation.IsCancellationRequested)
@@ -143,9 +144,9 @@ public sealed partial class MainWindowViewModel
                     return;
                 }
 
-                if (releasedAt is not null)
+                if (releasedAt is not null && Inspection?.BuildId == result.BuildId && Inspection.Store == result.Store)
                 {
-                    Inspection = result with
+                    Inspection = Inspection with
                     {
                         ReleasedAt = releasedAt
                     };
@@ -170,6 +171,14 @@ public sealed partial class MainWindowViewModel
     private void ShowBuild(InstallationInspection inspection)
     {
         var text = $"Build: {inspection.BuildId ?? "Unknown"}";
+        if (inspection.Store == GameStore.Epic)
+        {
+            text += " (Epic Games)";
+        }
+        else if (inspection.Store == GameStore.Manual)
+        {
+            text += " (Manual installation)";
+        }
         if (inspection.ReleasedAt is { } releasedAt)
         {
             text += $" ({releasedAt.ToLocalTime():g})";

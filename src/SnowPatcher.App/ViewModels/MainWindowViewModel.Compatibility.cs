@@ -63,9 +63,9 @@ public sealed partial class MainWindowViewModel
 
             _patchCheck = patchCheck;
             var report = patchCheck.Report;
-            if (report.BuildId is { } build && Inspection?.BuildId != build)
+            if (report.BuildId is { } build && (Inspection?.BuildId != build || Inspection.Store != report.Store))
             {
-                Inspection = new InstallationInspection(build, report.InitialPakState, report.BaselineDetail);
+                Inspection = new InstallationInspection(build, report.InitialPakState, report.BaselineDetail, Store: report.Store);
                 ShowBuild(Inspection);
             }
             Compatibility = report;

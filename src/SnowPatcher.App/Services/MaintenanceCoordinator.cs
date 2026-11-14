@@ -32,7 +32,7 @@ public sealed class MaintenanceCoordinator(MainWindowViewModel main)
                 { snapshot = await Task.Run(() => GameChangeProbe.Read(new GameInstallation(main.GameFolder))); }
                 catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
                 {
-                    // Steam may be replacing files. A later tick checks the committed installation.
+                    // The launcher may be replacing files. A later tick checks the committed installation.
                     return new MaintenanceResult([]);
                 }
 
