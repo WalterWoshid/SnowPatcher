@@ -1,3 +1,5 @@
+using SnowPatcher.Core.Installations;
+
 namespace SnowPatcher.Core;
 
 public enum FileVerificationState
@@ -8,4 +10,4 @@ public enum FileVerificationState
 }
 
 public sealed record InstallationInspection(string? BuildId, FileVerificationState State, string Detail,
-    DateTimeOffset? ReleasedAt = null);
+    DateTimeOffset? ReleasedAt = null, GameStore Store = GameStore.Steam);

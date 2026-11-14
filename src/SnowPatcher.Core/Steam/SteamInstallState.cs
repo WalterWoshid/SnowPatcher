@@ -6,6 +6,18 @@ namespace SnowPatcher.Core.Steam;
 
 internal sealed record SteamInstallState(string BuildId, string DepotFingerprint)
 {
+    public static bool OwnsReceipt(GameInstallation installation, string receipt)
+    {
+        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(installation.RootDirectory));
+        var steamApps = Path.GetDirectoryName(receipt)!;
+        var document = SteamKeyValues.Parse(File.ReadAllText(receipt));
+        return document.Objects.TryGetValue("AppState", out var app) &&
+            app.Values.GetValueOrDefault("appid") == SteamInstallationLocator.AppId &&
+            app.Values.TryGetValue("installdir", out var directory) &&
+            string.Equals(root, Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.Combine(steamApps, "common", directory))),
+                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    }
+
     public static SteamInstallState Read(GameInstallation installation)
     {
         var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(installation.RootDirectory));

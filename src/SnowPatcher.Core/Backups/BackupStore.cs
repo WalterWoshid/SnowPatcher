@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using SnowPatcher.Core.Steam;
+using SnowPatcher.Core.Installations;
 
 namespace SnowPatcher.Core.Backups;
 
@@ -24,7 +24,7 @@ public sealed class BackupStore
     public async Task<ArchiveBackup> EnsureBackupAsync(GameInstallation installation, string expectedBuild, CancellationToken cancellationToken = default)
     {
         using var operation = AcquireLock(installation);
-        var state = SteamInstallState.Read(installation);
+        var state = GameInstallState.Read(installation);
         if (state.BuildId != expectedBuild)
         {
             throw new IOException("The installed build changed. Select the game folder again.");
@@ -35,7 +35,7 @@ public sealed class BackupStore
 
     public async Task<IReadOnlyList<ArchiveBackup>> ListAsync(GameInstallation installation, CancellationToken cancellationToken = default)
     {
-        var state = SteamInstallState.Read(installation);
+        var state = GameInstallState.Read(installation);
         var directory = GetInstallationDirectory(installation);
         if (!Directory.Exists(directory))
         {
@@ -69,7 +69,7 @@ public sealed class BackupStore
     {
         GameSessionGuard.EnsureCanRestore(installation);
         using var operation = AcquireLock(installation);
-        var state = SteamInstallState.Read(installation);
+        var state = GameInstallState.Read(installation);
         var directory = GetRecordDirectory(installation, selected.Id);
         var backup = await ReadRecordAsync(directory, cancellationToken).ConfigureAwait(false);
         if (backup is null || !SameContent(backup, selected) || !Matches(backup, installation, state))
@@ -201,7 +201,7 @@ public sealed class BackupStore
         finally { TryDeleteFile(temporary); }
     }
 
-    internal async Task<ArchiveBackup> CreateSnapshotAsync(GameInstallation installation, SteamInstallState state, string reason,
+    internal async Task<ArchiveBackup> CreateSnapshotAsync(GameInstallation installation, GameInstallState state, string reason,
         CancellationToken cancellationToken)
     {
         RejectLink(installation.InitialPakPath);
@@ -215,7 +215,7 @@ public sealed class BackupStore
             var contentPath = Path.Combine(pending, "initial.pak");
             var copied = await CopyArchiveAsync(installation.InitialPakPath, contentPath, cancellationToken).ConfigureAwait(false);
             state.EnsureUnchanged(installation);
-            var record = new ArchiveBackup(1, id, NormalizeRoot(installation), state.BuildId, state.DepotFingerprint,
+            var record = new ArchiveBackup(1, id, NormalizeRoot(installation), state.BuildId, state.Fingerprint,
                 DateTimeOffset.UtcNow, copied.Hash, copied.Length, reason);
             if (!await HasExpectedContentAsync(contentPath, record, cancellationToken).ConfigureAwait(false))
             {
@@ -327,8 +327,8 @@ public sealed class BackupStore
 
     private static bool SameContent(ArchiveBackup a, ArchiveBackup b) => a with { Label = null } == b with { Label = null };
 
-    private static bool Matches(ArchiveBackup backup, GameInstallation installation, SteamInstallState state) =>
-        backup.InstallationPath == NormalizeRoot(installation) && backup.BuildId == state.BuildId && backup.DepotFingerprint == state.DepotFingerprint;
+    private static bool Matches(ArchiveBackup backup, GameInstallation installation, GameInstallState state) =>
+        backup.InstallationPath == NormalizeRoot(installation) && backup.BuildId == state.BuildId && backup.DepotFingerprint == state.Fingerprint;
 
     internal FileStream AcquireLock(GameInstallation installation)
     {

@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
 using SnowPatcher.Core.Backups;
 using SnowPatcher.Core.Compatibility;
+using SnowPatcher.Core.Installations;
 using SnowPatcher.Core.Mods;
-using SnowPatcher.Core.Steam;
 
 namespace SnowPatcher.Core.Patching;
 
@@ -12,7 +12,7 @@ public sealed partial class PatchInstaller
     {
         token.ThrowIfCancellationRequested();
         GameSessionGuard.EnsureCanApply(installation);
-        prepared.Steam!.EnsureUnchanged(installation);
+        prepared.Installation!.EnsureUnchanged(installation);
         var outputs = installedOutputs ? prepared.Outputs.ToDictionary(p => PatchStorage.GamePath(installation, p.Key), p => PatchStorage.Hash(p.Value), OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal) : null;
         foreach (var file in prepared.Check.Report.GameFiles)
         {
@@ -38,10 +38,10 @@ public sealed partial class PatchInstaller
         }
 
         GameSessionGuard.EnsureCanApply(installation);
-        var steam = SteamInstallState.Read(installation);
-        if (steam.BuildId != journal.BuildId || steam.DepotFingerprint != journal.DepotFingerprint)
+        var installationState = GameInstallState.Read(installation);
+        if (installationState.BuildId != journal.BuildId || installationState.Fingerprint != journal.DepotFingerprint)
         {
-            throw new IOException("Steam changed the game build during an interrupted apply. Recovery copies were kept; no files were overwritten.");
+            throw new IOException("The game build changed during an interrupted apply. Recovery copies were kept; no files were overwritten.");
         }
 
         var committed = store.ReadState()?.TransactionId == journal.Id;
@@ -62,7 +62,7 @@ public sealed partial class PatchInstaller
         {
             foreach (var file in journal.Files.Reverse())
             {
-                steam.EnsureUnchanged(installation);
+                installationState.EnsureUnchanged(installation);
                 GameSessionGuard.EnsureCanApply(installation);
                 var path = PatchStorage.GamePath(installation, file.Path);
                 if (PatchStorage.Hash(PatchStorage.ReadFile(path)) == file.BeforeHash)
@@ -70,14 +70,14 @@ public sealed partial class PatchInstaller
                     continue;
                 }
 
-                InstallFile(installation, store, journal.Id + "-recovery", file.Path, file.AfterHash, file.BeforeHash, steam);
+                InstallFile(installation, store, journal.Id + "-recovery", file.Path, file.AfterHash, file.BeforeHash, installationState);
             }
         }
 
         Cleanup(installation, store, journal);
     }
 
-    private static void InstallFile(GameInstallation installation, PatchStorage store, string id, string relative, string before, string after, SteamInstallState steam)
+    private static void InstallFile(GameInstallation installation, PatchStorage store, string id, string relative, string before, string after, GameInstallState installationState)
     {
         var target = PatchStorage.GamePath(installation, relative);
         if (!Directory.Exists(Path.GetDirectoryName(target)))
@@ -91,7 +91,7 @@ public sealed partial class PatchInstaller
         if (after == "absent")
         {
             GameSessionGuard.EnsureCanApply(installation);
-            steam.EnsureUnchanged(installation);
+            installationState.EnsureUnchanged(installation);
             RequireHash(target, before);
             File.Move(target, rollback);
         }
@@ -106,7 +106,7 @@ public sealed partial class PatchInstaller
             }
 
             GameSessionGuard.EnsureCanApply(installation);
-            steam.EnsureUnchanged(installation);
+            installationState.EnsureUnchanged(installation);
             RequireHash(target, before);
             if (before == "absent")
             {

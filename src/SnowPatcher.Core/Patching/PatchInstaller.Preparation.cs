@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
 using SnowPatcher.Core.Backups;
 using SnowPatcher.Core.Compatibility;
+using SnowPatcher.Core.Installations;
 using SnowPatcher.Core.Mods;
-using SnowPatcher.Core.Steam;
 
 namespace SnowPatcher.Core.Patching;
 
@@ -11,13 +11,13 @@ public sealed partial class PatchInstaller
     private async Task<Prepared> PrepareAsync(GameInstallation installation, CompatibilityInput[] inputs, CancellationToken token)
     {
         var store = new PatchStorage(_root, installation);
-        var inspection = await SteamInstallationVerifier.InspectAsync(installation, token).ConfigureAwait(false);
+        var inspection = await GameInstallationVerifier.InspectAsync(installation, token).ConfigureAwait(false);
         var previous = store.ReadState();
-        SteamInstallState? steam = null;
+        GameInstallState? installationState = null;
         string? reason = null;
         try
         {
-            steam = SteamInstallState.Read(installation);
+            installationState = GameInstallState.Read(installation);
         }
         catch (Exception error) when (error is IOException or InvalidDataException or InvalidOperationException)
         {
@@ -31,21 +31,23 @@ public sealed partial class PatchInstaller
         if (needsRecovery)
         {
             reason = "An interrupted apply needs recovery. Close SnowRunner and click Recover.";
-            var recoveryReport = new CompatibilityReport(DateTimeOffset.UtcNow, Path.GetFullPath(installation.RootDirectory), steam?.BuildId ?? inspection.BuildId, inspection.State, [], [], [], [], inputs.Select(i => new ModCompatibility(i.LibraryId, i.Archive.DisplayName, [new CompatibilityIssue("unsupported", reason)])).ToImmutableArray());
-            return new Prepared(new PatchCheckResult(recoveryReport, true, true, reason, NeedsRecovery: true), steam, previous, baseline, [], []);
+            var recoveryReport = new CompatibilityReport(DateTimeOffset.UtcNow, Path.GetFullPath(installation.RootDirectory), installationState?.BuildId ?? inspection.BuildId, inspection.State, [], [], [], [], inputs.Select(i => new ModCompatibility(i.LibraryId, i.Archive.DisplayName, [new CompatibilityIssue("unsupported", reason)])).ToImmutableArray(), Store: inspection.Store);
+            return new Prepared(new PatchCheckResult(recoveryReport, true, true, reason, NeedsRecovery: true), installationState, previous, baseline, [], []);
         }
 
-        if (previous is not null && steam is not null)
+        if (previous is not null && installationState is not null)
         {
-            var sameBuild = previous.BuildId == steam.BuildId && previous.DepotFingerprint == steam.DepotFingerprint;
+            var sameBuild = previous.BuildId == installationState.BuildId && previous.DepotFingerprint == installationState.Fingerprint;
             var current = previous.Files.ToDictionary(f => f.Path, f => PatchStorage.ReadFile(PatchStorage.GamePath(installation, f.Path)), StringComparer.OrdinalIgnoreCase);
             foreach (var pair in current)
             {
                 observed[pair.Key] = PatchStorage.Hash(pair.Value);
             }
 
-            var managed = sameBuild && previous.Files.All(f => PatchStorage.Hash(current[f.Path]) is var hash && (hash == f.OutputHash || hash == f.BaselineHash));
-            var restored = !managed && sameBuild ? store.FindMatchingHistory(steam, current, token) : null;
+            // Without launcher references, exact saved file hashes still identify our own state after an unrelated update.
+            var canUseSavedFiles = sameBuild || installationState.Store == GameStore.Manual;
+            var managed = canUseSavedFiles && previous.Files.All(f => PatchStorage.Hash(current[f.Path]) is var hash && (hash == f.OutputHash || hash == f.BaselineHash));
+            var restored = !managed && sameBuild ? store.FindMatchingHistory(installationState, current, token) : null;
             if (managed || restored is not null)
             {
                 foreach (var file in (restored ?? previous).Files)
@@ -62,7 +64,7 @@ public sealed partial class PatchInstaller
                 // own patches into it and make disabling them lose other edits.
                 try
                 {
-                    SteamInstallationVerifier.VerifyOriginals(installation, steam, current);
+                    GameInstallationVerifier.VerifyOriginals(installation, installationState, current);
                     foreach (var pair in current)
                     {
                         baseline[pair.Key] = pair.Value;
@@ -115,12 +117,12 @@ public sealed partial class PatchInstaller
             reason ??= "Resolve the compatibility issues before applying mods.";
         }
 
-        var gameChanged = previous is not null && (previous.BuildId != steam?.BuildId || previous.DepotFingerprint != steam?.DepotFingerprint ||
+        var gameChanged = previous is not null && (previous.BuildId != installationState?.BuildId || previous.DepotFingerprint != installationState?.Fingerprint ||
             previous.Files.Any(f => f.OutputHash != (observed.TryGetValue(f.Path, out var hash) ? hash : PatchStorage.Hash(PatchStorage.ReadFile(PatchStorage.GamePath(installation, f.Path))))));
-        return new Prepared(new PatchCheckResult(report, reason is null && pending && steam is not null, pending, reason,
-            GameNeedsReapply: gameChanged && pending, MatchesAppliedSelection: previous is not null && SameMods(previous.Mods, mods)), steam, previous, baseline, outputs, mods);
+        return new Prepared(new PatchCheckResult(report, reason is null && pending && installationState is not null, pending, reason,
+            GameNeedsReapply: gameChanged && pending, MatchesAppliedSelection: previous is not null && SameMods(previous.Mods, mods)), installationState, previous, baseline, outputs, mods);
     }
 
     private static bool SameMods(ManagedMod[] a, ManagedMod[] b) => a.Length == b.Length && a.Zip(b).All(pair => pair.First.Id == pair.Second.Id && pair.First.Version == pair.Second.Version && pair.First.ArchiveHash == pair.Second.ArchiveHash);
-    private sealed record Prepared(PatchCheckResult Check, SteamInstallState? Steam, ManagedState? Previous, Dictionary<string, byte[]?> Baseline, Dictionary<string, byte[]?> Outputs, ManagedMod[] Mods);
+    private sealed record Prepared(PatchCheckResult Check, GameInstallState? Installation, ManagedState? Previous, Dictionary<string, byte[]?> Baseline, Dictionary<string, byte[]?> Outputs, ManagedMod[] Mods);
 }

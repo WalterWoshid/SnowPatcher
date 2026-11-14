@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
 using SnowPatcher.Core.Backups;
 using SnowPatcher.Core.Compatibility;
+using SnowPatcher.Core.Installations;
 using SnowPatcher.Core.Mods;
-using SnowPatcher.Core.Steam;
 
 namespace SnowPatcher.Core.Patching;
 
@@ -48,7 +48,7 @@ public sealed partial class PatchInstaller
                 using var input = File.OpenRead(metadata);
                 using var document = System.Text.Json.JsonDocument.Parse(input);
                 var installation = new GameInstallation(document.RootElement.GetProperty("InstallationPath").GetString()!);
-                _ = SteamInstallState.Read(installation);
+                _ = GameInstallState.Read(installation);
                 var store = new PatchStorage(_root, installation);
                 if (Path.GetFullPath(path) == Path.GetFullPath(store.DirectoryPath) && HasManagedState(installation))
                 {
@@ -100,11 +100,11 @@ public sealed partial class PatchInstaller
                 throw new InvalidOperationException(prepared.Check.BlockReason ?? "Resolve the compatibility issues before applying mods.");
             }
 
-            var steam = prepared.Steam!;
+            var installationState = prepared.Installation!;
             progress?.Report("Saving backups...");
             if (File.Exists(installation.InitialPakPath))
             {
-                await _backups.CreateSnapshotAsync(installation, steam, "Before apply", token).ConfigureAwait(false);
+                await _backups.CreateSnapshotAsync(installation, installationState, "Before apply", token).ConfigureAwait(false);
             }
 
             foreach (var bytes in prepared.Baseline.Values)
@@ -128,13 +128,13 @@ public sealed partial class PatchInstaller
             }
 
             var id = Guid.NewGuid().ToString("N");
-            var next = new ManagedState(1, id, store.InstallationPath, steam.BuildId, steam.DepotFingerprint, prepared.Baseline.Select(p => new ManagedFile(p.Key, PatchStorage.Hash(p.Value), PatchStorage.Hash(prepared.Outputs[p.Key]))).ToArray(), prepared.Mods);
+            var next = new ManagedState(1, id, store.InstallationPath, installationState.BuildId, installationState.Fingerprint, prepared.Baseline.Select(p => new ManagedFile(p.Key, PatchStorage.Hash(p.Value), PatchStorage.Hash(prepared.Outputs[p.Key]))).ToArray(), prepared.Mods);
             if (prepared.Previous is not null)
             {
                 store.SaveHistory(id, prepared.Previous);
             }
 
-            var journal = new PatchJournal(1, id, store.InstallationPath, steam.BuildId, steam.DepotFingerprint, changes.ToArray());
+            var journal = new PatchJournal(1, id, store.InstallationPath, installationState.BuildId, installationState.Fingerprint, changes.ToArray());
             // Starting files and preimages are checksum-verified and durable before touching the game folder.
             foreach (var file in next.Files)
             {
@@ -163,8 +163,8 @@ public sealed partial class PatchInstaller
                 {
                     token.ThrowIfCancellationRequested();
                     GameSessionGuard.EnsureCanApply(installation);
-                    steam.EnsureUnchanged(installation);
-                    InstallFile(installation, store, journal.Id, file.Path, file.BeforeHash, file.AfterHash, steam);
+                    installationState.EnsureUnchanged(installation);
+                    InstallFile(installation, store, journal.Id, file.Path, file.BeforeHash, file.AfterHash, installationState);
                 }
 
                 ValidateInputs(installation, prepared, selected, CancellationToken.None, installedOutputs: true);

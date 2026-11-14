@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using SnowPatcher.Core.Installations;
 using SnowPatcher.Core.Packages;
 
 namespace SnowPatcher.Core.Patching;
@@ -67,7 +68,7 @@ internal sealed class PatchStorage
         }
     }
 
-    public ManagedState? FindMatchingHistory(Steam.SteamInstallState steam,
+    public ManagedState? FindMatchingHistory(GameInstallState installationState,
         IReadOnlyDictionary<string, byte[]?> current, CancellationToken cancellationToken)
     {
         var history = Path.Combine(DirectoryPath, "history");
@@ -89,7 +90,7 @@ internal sealed class PatchStorage
                 }
 
                 ValidateState(state);
-                if (state.BuildId != steam.BuildId || state.DepotFingerprint != steam.DepotFingerprint ||
+                if (state.BuildId != installationState.BuildId || state.DepotFingerprint != installationState.Fingerprint ||
                     state.Files.Length != current.Count)
                 {
                     continue;
@@ -278,9 +279,9 @@ internal sealed class PatchStorage
     }
     private static void ValidateIdentity(string build, string fingerprint)
     {
-        if (!ulong.TryParse(build, out var number) || number == 0 || fingerprint is not { Length: 64 } || !fingerprint.All(Uri.IsHexDigit))
+        if (string.IsNullOrWhiteSpace(build) || build.Any(char.IsControl) || fingerprint is not { Length: 64 } || !fingerprint.All(Uri.IsHexDigit))
         {
-            throw new InvalidDataException("Invalid saved Steam build identity.");
+            throw new InvalidDataException("Invalid saved game build identity.");
         }
     }
 }

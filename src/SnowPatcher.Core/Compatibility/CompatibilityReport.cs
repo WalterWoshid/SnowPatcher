@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using SnowPatcher.Core.Installations;
 using SnowPatcher.Core.Mods;
 
 namespace SnowPatcher.Core.Compatibility;
@@ -23,14 +24,16 @@ public sealed record CheckedOperation(string ModId, string OperationId, string T
 // A read-only structural check. Apply preserves the starting files and validates outputs before committing them.
 public sealed record CompatibilityReport(DateTimeOffset CheckedAt, string GameRoot, string? BuildId,
     FileVerificationState InitialPakState, ImmutableArray<CheckedFile> GameFiles, ImmutableArray<CheckedFile> Packages,
-    ImmutableArray<string> ModOrder, ImmutableArray<CheckedOperation> Operations, ImmutableArray<ModCompatibility> Mods, bool UsesManagedBaseline = false)
+    ImmutableArray<string> ModOrder, ImmutableArray<CheckedOperation> Operations, ImmutableArray<ModCompatibility> Mods, bool UsesManagedBaseline = false,
+    GameStore Store = GameStore.Steam)
 {
     public bool HasIssues => Mods.Any(m => !m.Issues.IsEmpty);
     public string BaselineDetail => UsesManagedBaseline ? "Checked against SnowPatcher's saved starting files for this build." : InitialPakState switch
     {
-        FileVerificationState.Original => "initial.pak matches Steam's original for this build.",
+        FileVerificationState.Original => $"initial.pak matches {(Store == GameStore.Epic ? "Epic's" : "Steam's")} original for this build.",
         FileVerificationState.Changed => "Checked against the existing modified installation. Patches must match these files before they can be applied.",
-        _ => "Steam's original initial.pak could not be verified. These results describe the installed files."
+        _ when Store == GameStore.Manual => "Checked against the installed files. No launcher reference is available to verify originals.",
+        _ => "The launcher's original initial.pak could not be verified. These results describe the installed files."
     };
 }
 

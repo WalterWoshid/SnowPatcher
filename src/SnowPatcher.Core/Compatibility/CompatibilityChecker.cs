@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
 using System.Text.Json;
+using SnowPatcher.Core.Installations;
 using SnowPatcher.Core.Mods;
 using SnowPatcher.Core.Packages;
-using SnowPatcher.Core.Steam;
 
 namespace SnowPatcher.Core.Compatibility;
 
@@ -11,7 +11,7 @@ public static partial class CompatibilityChecker
     public static async Task<CompatibilityReport> CheckAsync(GameInstallation installation, IReadOnlyList<CompatibilityInput> inputs, CancellationToken cancellationToken = default)
     {
         var selected = inputs.ToArray();
-        var inspection = await SteamInstallationVerifier.InspectAsync(installation, cancellationToken).ConfigureAwait(false);
+        var inspection = await GameInstallationVerifier.InspectAsync(installation, cancellationToken).ConfigureAwait(false);
         return await Task.Run(() => Check(installation, selected, inspection, cancellationToken).Report, cancellationToken).ConfigureAwait(false);
     }
 
@@ -19,10 +19,10 @@ public static partial class CompatibilityChecker
     {
         var results = inputs.Select(i => new Result(i)).ToArray();
         var game = new GameResources(installation.RootDirectory, token, baseline);
-        SteamInstallState? steam = null;
+        GameInstallState? installationState = null;
         try
         {
-            steam = SteamInstallState.Read(installation);
+            installationState = GameInstallState.Read(installation);
         }
         catch (IOException)
         {
@@ -226,9 +226,9 @@ public static partial class CompatibilityChecker
 
         try
         {
-            inspection = SteamInstallationVerifier.InspectAsync(installation, token).GetAwaiter().GetResult();
+            inspection = GameInstallationVerifier.InspectAsync(installation, token).GetAwaiter().GetResult();
             game.EnsureUnchanged();
-            steam?.EnsureUnchanged(installation);
+            installationState?.EnsureUnchanged(installation);
             foreach (var package in packages)
             {
                 token.ThrowIfCancellationRequested();
@@ -246,7 +246,7 @@ public static partial class CompatibilityChecker
             }
         }
 
-        var report = new CompatibilityReport(DateTimeOffset.UtcNow, Path.GetFullPath(installation.RootDirectory), steam?.BuildId ?? inspection.BuildId, inspection.State, game.Snapshots.ToImmutableArray(), packages.ToImmutableArray(), ordered.Select(r => r.Id).ToImmutableArray(), operations.ToImmutableArray(), results.Select(r => new ModCompatibility(r.Input.LibraryId, r.Name, r.Issues.Distinct().ToImmutableArray())).ToImmutableArray());
+        var report = new CompatibilityReport(DateTimeOffset.UtcNow, Path.GetFullPath(installation.RootDirectory), installationState?.BuildId ?? inspection.BuildId, inspection.State, game.Snapshots.ToImmutableArray(), packages.ToImmutableArray(), ordered.Select(r => r.Id).ToImmutableArray(), operations.ToImmutableArray(), results.Select(r => new ModCompatibility(r.Input.LibraryId, r.Name, r.Issues.Distinct().ToImmutableArray())).ToImmutableArray(), Store: inspection.Store);
         return (report, outputs);
     }
 
