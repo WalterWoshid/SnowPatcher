@@ -83,9 +83,9 @@ public sealed partial class MainWindowViewModel
                 var inputs = Mods.Where(m => m.IsEnabled).Select(m => new CompatibilityInput(m.ToRecord().Id,
                     downloaded.TryGetValue(m, out var update) ? update.Archive : m.Archive)).ToArray();
                 var check = await RunGameOperationAsync(() => _patchInstaller.CheckAsync(new GameInstallation(GameFolder), inputs, token), token);
-                if (check.NeedsRecovery || check.Report.HasIssues || check.BlockReason is not null)
+                if (check.NeedsRecovery || check.Report.HasBlockingIssues || check.BlockReason is not null)
                 {
-                    var detail = check.Report.Mods.FirstOrDefault(m => !m.Issues.IsEmpty)?.Detail ?? check.BlockReason ?? "A mod update conflicts with the current selection.";
+                    var detail = check.Report.Mods.FirstOrDefault(m => m.HasBlockingIssues)?.Detail ?? check.BlockReason ?? "A mod update conflicts with the current selection.";
                     foreach (var mod in downloaded.Keys)
                     {
                         mod.SetCheckFailure("Automatic update skipped. " + detail);
@@ -137,7 +137,7 @@ public sealed partial class MainWindowViewModel
         {
             _applyTask = ApplyCoreAsync(automatic: true);
             await _applyTask;
-            return _patchCheck is { HasPendingChanges: false, BlockReason: null, Report.HasIssues: false };
+            return _patchCheck is { HasPendingChanges: false, BlockReason: null, Report.HasBlockingIssues: false };
         }
         finally { SetAutomaticWork(false); }
     }

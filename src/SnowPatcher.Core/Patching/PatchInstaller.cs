@@ -8,7 +8,7 @@ namespace SnowPatcher.Core.Patching;
 
 public sealed record PatchCheckResult(CompatibilityReport Report, bool CanApply, bool HasPendingChanges, string? BlockReason, bool NeedsRecovery = false,
     bool GameNeedsReapply = false, bool MatchesAppliedSelection = false);
-public sealed record PatchApplyResult(bool Changed, int FileCount, string BackupDirectory, bool Recovered = false);
+public sealed record PatchApplyResult(bool Changed, int FileCount, string BackupDirectory, bool Recovered = false, bool HasWarnings = false);
 public sealed partial class PatchInstaller
 {
     private readonly string _root;
@@ -92,9 +92,9 @@ public sealed partial class PatchInstaller
             var prepared = await PrepareAsync(installation, selected, token).ConfigureAwait(false);
             if (!prepared.Check.CanApply)
             {
-                if (!prepared.Check.HasPendingChanges && prepared.Check.BlockReason is null && !prepared.Check.Report.HasIssues)
+                if (!prepared.Check.HasPendingChanges && prepared.Check.BlockReason is null && !prepared.Check.Report.HasBlockingIssues)
                 {
-                    return new PatchApplyResult(false, 0, store.DirectoryPath);
+                    return new PatchApplyResult(false, 0, store.DirectoryPath, HasWarnings: prepared.Check.Report.HasWarnings);
                 }
 
                 throw new InvalidOperationException(prepared.Check.BlockReason ?? "Resolve the compatibility issues before applying mods.");
@@ -197,7 +197,7 @@ public sealed partial class PatchInstaller
                 }
             }
 
-            return new PatchApplyResult(changes.Count > 0, changes.Count, store.DirectoryPath);
+            return new PatchApplyResult(changes.Count > 0, changes.Count, store.DirectoryPath, HasWarnings: prepared.Check.Report.HasWarnings);
         }, token).ConfigureAwait(false);
     }
 }

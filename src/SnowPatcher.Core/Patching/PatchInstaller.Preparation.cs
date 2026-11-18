@@ -110,9 +110,13 @@ public sealed partial class PatchInstaller
         }
 
         var packages = inputs.Where(i => i.Archive.Package is not null).GroupBy(i => i.Archive.Package!.Manifest.Id, StringComparer.Ordinal).Where(g => g.Count() == 1).ToDictionary(g => g.Key, g => g.Single().Archive.Package!, StringComparer.Ordinal);
-        var mods = report.ModOrder.Where(packages.ContainsKey).Select(id => packages[id]).Select(p => new ManagedMod(p.Manifest.Id, p.Manifest.Version, p.ArchiveSha256, p.Manifest.Operations.Select(o => o.Id).ToArray())).ToArray();
-        var pending = outputs.Any(p => PatchStorage.Hash(p.Value) != PatchStorage.Hash(PatchStorage.ReadFile(PatchStorage.GamePath(installation, p.Key)))) || (previous is null ? mods.Length > 0 : !SameMods(previous.Mods, mods));
-        if (report.HasIssues)
+        var appliedOperations = report.Operations.Select(o => (o.ModId, o.OperationId)).ToHashSet();
+        var mods = report.ModOrder.Where(packages.ContainsKey).Select(id => packages[id]).Select(p => new ManagedMod(p.Manifest.Id, p.Manifest.Version, p.ArchiveSha256,
+            p.Manifest.Operations.Where(o => appliedOperations.Contains((p.Manifest.Id, o.Id))).Select(o => o.Id).ToArray())).ToArray();
+        var matchesSelection = previous is not null && SameMods(previous.Mods, mods);
+        var pending = outputs.Any(p => PatchStorage.Hash(p.Value) != PatchStorage.Hash(PatchStorage.ReadFile(PatchStorage.GamePath(installation, p.Key)))) ||
+            (previous is null ? mods.Length > 0 : !matchesSelection || previous.Mods.Zip(mods).Any(pair => !pair.First.Operations.SequenceEqual(pair.Second.Operations)));
+        if (report.HasBlockingIssues)
         {
             reason ??= "Resolve the compatibility issues before applying mods.";
         }
@@ -120,7 +124,7 @@ public sealed partial class PatchInstaller
         var gameChanged = previous is not null && (previous.BuildId != installationState?.BuildId || previous.DepotFingerprint != installationState?.Fingerprint ||
             previous.Files.Any(f => f.OutputHash != (observed.TryGetValue(f.Path, out var hash) ? hash : PatchStorage.Hash(PatchStorage.ReadFile(PatchStorage.GamePath(installation, f.Path))))));
         return new Prepared(new PatchCheckResult(report, reason is null && pending && installationState is not null, pending, reason,
-            GameNeedsReapply: gameChanged && pending, MatchesAppliedSelection: previous is not null && SameMods(previous.Mods, mods)), installationState, previous, baseline, outputs, mods);
+            GameNeedsReapply: gameChanged && pending, MatchesAppliedSelection: matchesSelection), installationState, previous, baseline, outputs, mods);
     }
 
     private static bool SameMods(ManagedMod[] a, ManagedMod[] b) => a.Length == b.Length && a.Zip(b).All(pair => pair.First.Id == pair.Second.Id && pair.First.Version == pair.Second.Version && pair.First.ArchiveHash == pair.Second.ArchiveHash);

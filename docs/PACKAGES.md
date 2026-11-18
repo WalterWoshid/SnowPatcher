@@ -172,6 +172,14 @@ The writer edits the selected token spans rather than serializing unrelated
 configuration. An edited SSO resource is reparsed and compared with the planned
 result before it can be staged.
 
+On a `strings.edit` operation, set `"optional": true` to allow SnowPatcher to
+skip a translation it cannot apply and show a warning. This requires
+`minSnowPatcherVersion` 1.5.0 or newer. An optional operation can only add
+keys to a non-English game language table in `initial.pak`, and the same mod
+must add those keys to the English table as required edits. Optional
+translations run after required edits in the final selection. Required
+operations and other mods must not rely on their output.
+
 `strings.edit` uses `{ "key", "before", "value" }` entries. Its `before` is
 `{ "state": "absent" }` or `{ "state": "present", "value": "old text" }`.
 Each key being edited must have at most one definition in the input. Unrelated

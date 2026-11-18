@@ -74,9 +74,10 @@ public sealed partial class MainWindowViewModel
                 selected.Single(m => m.ToRecord().Id == result.LibraryId).SetCompatibility(result, report);
             }
 
-            var issues = report.Mods.Count(m => !m.Issues.IsEmpty);
+            var issues = report.Mods.Count(m => m.HasBlockingIssues);
             SetCompatibilitySummary(issues > 0 ? $"{issues} {(issues == 1 ? "mod needs" : "mods need")} attention. Click a check result for details."
-                : patchCheck.BlockReason ?? (patchCheck.HasPendingChanges ? "Changes not applied." : ""));
+                : patchCheck.BlockReason ?? (report.HasWarnings ? "Some translations could not be applied. Click a check result for details."
+                    : patchCheck.HasPendingChanges ? "Changes not applied." : ""));
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception error) when (IsLibraryError(error))
@@ -145,6 +146,10 @@ public sealed partial class MainWindowViewModel
         {
             var result = await RunGameOperationAsync(() => _patchInstaller.ApplyAsync(new GameInstallation(GameFolder), selected, new Progress<string>(SetStatus)));
             message = result.Recovered ? "Recovery completed." : result.Changed ? selected.Length == 0 ? "Mods removed." : "Mods applied." : "No changes to apply.";
+            if (result.HasWarnings)
+            {
+                message += " Some translations were skipped. Click a check result for details.";
+            }
             _hasBackups = (await _backupStore.ListAsync(new GameInstallation(GameFolder))).Count > 0;
         }
         catch (Exception error) when (IsLibraryError(error) || error is System.Text.Json.JsonException)

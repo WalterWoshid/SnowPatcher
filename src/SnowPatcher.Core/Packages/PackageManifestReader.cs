@@ -57,7 +57,11 @@ internal static class PackageManifestReader
                 root.TryGetProperty("modioUrl", out var modioUrl) ? modioUrl.GetString() : null,
                 root.TryGetProperty("minSnowPatcherVersion", out minimum) ? minimum.GetString() : null);
             PackageSemantics.Validate(manifest);
-            return manifest;
+            var optionalIds = OptionalTranslations.GetOperationIds(manifest);
+            return optionalIds.Count == 0 ? manifest : manifest with
+            {
+                Operations = manifest.Operations.Select(o => optionalIds.Contains(o.Id) ? o with { IsOptional = true } : o).ToImmutableArray()
+            };
         }
         catch (Exception error) when (error is JsonException or DecoderFallbackException or OverflowException or InvalidOperationException)
         {

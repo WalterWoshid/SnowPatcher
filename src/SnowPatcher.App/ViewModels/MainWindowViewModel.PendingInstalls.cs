@@ -179,7 +179,7 @@ public sealed partial class MainWindowViewModel
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(selection)));
     }
 
-    private bool IsPendingInstallationApplied(PendingModInstallation request) => _patchCheck is { HasPendingChanges: false, BlockReason: null, NeedsRecovery: false, Report.HasIssues: false } &&
+    private bool IsPendingInstallationApplied(PendingModInstallation request) => _patchCheck is { HasPendingChanges: false, BlockReason: null, NeedsRecovery: false, Report.HasBlockingIssues: false } &&
         request.Archives.All(a => Mods.Any(m => m.Archive.Sha256 == a.Sha256 && !m.IsUnavailable));
 
     private void CompletePendingInstallation()

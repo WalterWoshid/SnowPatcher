@@ -47,4 +47,4 @@ public sealed record PackageTarget(string File, ImmutableArray<PackageMember> Me
 public sealed record PackageCheck(PackageTarget Target, string Sha256);
 
 // Keep the checked, immutable JSON for the adapters; never execute package code.
-public sealed record PackageOperation(string Id, string Type, PackageTarget Target, JsonElement Definition);
+public sealed record PackageOperation(string Id, string Type, PackageTarget Target, JsonElement Definition, bool IsOptional = false);

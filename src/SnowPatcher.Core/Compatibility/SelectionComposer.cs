@@ -5,13 +5,13 @@ namespace SnowPatcher.Core.Compatibility;
 
 internal static partial class SelectionComposer
 {
-    internal static IReadOnlyDictionary<string, byte[]?> Compose(GameResources game, IReadOnlyList<ModPackage> packages, CancellationToken token)
+    internal static ResourceView Compose(GameResources game, IReadOnlyList<ModPackage> packages, CancellationToken token)
     {
         var view = new ResourceView(game, token);
         var groups = new Dictionary<string, FunctionGroup>(StringComparer.Ordinal);
         foreach (var package in packages)
         {
-            foreach (var operation in package.Manifest.Operations)
+            foreach (var operation in package.Manifest.Operations.Where(o => !o.IsOptional))
             {
                 token.ThrowIfCancellationRequested();
                 try
@@ -86,7 +86,7 @@ internal static partial class SelectionComposer
             }
         }
 
-        return view.Outputs();
+        return view;
     }
 
     private sealed record FunctionGroup(byte[] Module, string BodyHash, JsonElement Definition)

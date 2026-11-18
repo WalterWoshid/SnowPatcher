@@ -152,7 +152,7 @@ public static partial class CompatibilityChecker
                         throw new CheckFailure("dependency", $"Dependency {ancestor.Name} did not pass its checks.");
                     }
 
-                    foreach (var operation in ancestor.Package!.Manifest.Operations)
+                    foreach (var operation in ancestor.Package!.Manifest.Operations.Where(o => !o.IsOptional))
                     {
                         Apply(view, ancestor, operation, false, null, modern.Length, token);
                     }
@@ -182,7 +182,7 @@ public static partial class CompatibilityChecker
                 continue;
             }
 
-            foreach (var operation in result.Package!.Manifest.Operations)
+            foreach (var operation in result.Package!.Manifest.Operations.Where(o => !o.IsOptional))
             {
                 token.ThrowIfCancellationRequested();
                 try
@@ -213,7 +213,9 @@ public static partial class CompatibilityChecker
         {
             try
             {
-                outputs = SelectionComposer.Compose(game, ordered.Select(r => r.Package!).ToArray(), token);
+                var view = SelectionComposer.Compose(game, ordered.Select(r => r.Package!).ToArray(), token);
+                ApplyOptionalTranslations(view, ordered, claims, operations, token);
+                outputs = view.Outputs();
             }
             catch (Exception error) when (Recoverable(error))
             {
