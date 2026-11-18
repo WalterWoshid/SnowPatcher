@@ -182,10 +182,12 @@ operations and other mods must not rely on their output.
 
 `strings.edit` uses `{ "key", "before", "value" }` entries. Its `before` is
 `{ "state": "absent" }` or `{ "state": "present", "value": "old text" }`.
-Each key being edited must have at most one definition in the input. Unrelated
-duplicate definitions are preserved. Existing quoted keys and unquoted keys are
-accepted. The adapter preserves the supported input encoding, BOM and unrelated
-text, and quotes/escapes the new value using that format's grammar. A package
+Each key being edited must have at most one unambiguous definition in the input.
+The merger preserves unrelated rows, including duplicate definitions and
+unfamiliar syntax, and reports the key and line if an unfamiliar row may define
+an edited key. Existing quoted keys, unquoted keys and trailing `//` comments
+are accepted. The merger preserves the input encoding, BOM and existing line
+endings, and escapes new values using the game's string format. A package
 targets each supported language file explicitly. It does not overwrite a whole
 language file to add a few labels.
 
