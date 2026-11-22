@@ -13,7 +13,7 @@ The portable ZIP uses the same per-user library and update flow.
 ## Preferences and background checks
 
 **Options > Preferences** separates update checks from automatic installation.
-Checks and closing to the tray are on by default. Automatic installation, system startup
+Checks and closing to the tray are on by default. Automatic updates, system startup
 and starting minimized are off. Game updates notify you when mods need reapplying.
 
 Background mode keeps checking after the window is closed. Use the tray menu to
@@ -24,8 +24,8 @@ Game files are checked for changes once a minute; application and mod.io updates
 are checked every 30 minutes while SnowPatcher is running. Notifications are quiet
 and repeated checks do not repeat an alert. Completion notifications can be disabled.
 
-Automatic reapplication uses the last applied selection. Manual selection changes,
-conflicts and interrupted transactions require review. Game writes wait for
+Automatic reapplication after a game update uses the last applied selection.
+Conflicts and interrupted transactions require review. Game writes wait for
 SnowRunner to close and the game launcher to finish. Automatic mod updates are checked together
 before replacing the working versions; previous ZIPs and game backups are retained.
 Queued automatic updates stop if the mod selection or game folder changes.
@@ -55,13 +55,16 @@ Existing external references are copied on startup when their saved hashes match
 
 A matching package ID updates the existing row and preserves its enabled state.
 The previous verified ZIP is retained. Click the version number to choose an
-older copy, then Apply. Rebuilt packages can share a version number; the menu
+older copy. Rebuilt packages can share a version number; the menu
 distinguishes those copies by their hashes. Legacy ZIPs have no package ID and
 are matched by content only.
 
-Adding, updating, disabling or removing a row changes the selection. Apply
-installs that selection. Library changes are saved before replacing an entry;
-failed saves keep the previous selection.
+Adding a mod or changing the enabled selection queues it for automatic
+application. SnowPatcher checks compatibility and backs up files before applying.
+If SnowRunner is open, the status shows that the changes will apply when it
+closes. The queue resumes when SnowPatcher is running and its game folder is
+selected. Use **Apply** to retry a failed change or to apply while automatic
+actions are paused.
 
 The optional SnowPatcher indicator stays first and cannot be removed. It can be
 disabled like other mods.

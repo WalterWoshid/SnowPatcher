@@ -15,6 +15,7 @@ namespace SnowPatcher.App.Views;
 public partial class MainWindow : Window
 {
     private readonly DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromMinutes(1) };
+    private readonly DispatcherTimer _selectionTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly MaintenanceCoordinator _maintenance;
     private readonly IBrush? _normalListBorder;
     private bool _closing;
@@ -41,9 +42,17 @@ public partial class MainWindow : Window
         Opened += async (_, _) => await InitializeWindowAsync();
         Activated += async (_, _) => await PresentPendingDialogsAsync();
         _updateTimer.Tick += async (_, _) => await RunMaintenanceAsync();
+        _selectionTimer.Tick += async (_, _) =>
+        {
+            if (!_maintenanceRunning && OwnedWindows.Count == 0)
+            {
+                await ViewModel.ApplyQueuedSelectionAsync();
+            }
+        };
         Closed += (_, _) =>
         {
             _updateTimer.Stop();
+            _selectionTimer.Stop();
             ViewModel.ApplicationUpdateRequested -= OnApplicationUpdateRequested;
         };
         Closing += OnClosing;
@@ -71,6 +80,7 @@ public partial class MainWindow : Window
 
         _closing = true;
         _updateTimer.Stop();
+        _selectionTimer.Stop();
         try
         {
             await ViewModel.CloseAsync();

@@ -12,6 +12,7 @@ public sealed partial class ModLibraryStore : IDisposable
     private readonly string _root;
     private FileStream? _lock;
     public bool BundledModsInitialized { get; private set; }
+    public string? QueuedSelection { get; private set; }
 
     public ModLibraryStore(string? root = null)
     {
@@ -53,6 +54,7 @@ public sealed partial class ModLibraryStore : IDisposable
             }
 
             BundledModsInitialized = library.BundledModsInitialized;
+            QueuedSelection = library.QueuedSelection;
             return library.Mods;
         }
         catch (JsonException)
@@ -62,6 +64,12 @@ public sealed partial class ModLibraryStore : IDisposable
     }
 
     public void Save(IEnumerable<LibraryMod> mods, bool initializeBundledMods = false)
+        => Save(mods, QueuedSelection, initializeBundledMods);
+
+    public void SaveSelection(IEnumerable<LibraryMod> mods, string? queuedSelection)
+        => Save(mods, queuedSelection, initializeBundledMods: false);
+
+    private void Save(IEnumerable<LibraryMod> mods, string? queuedSelection, bool initializeBundledMods)
     {
         if (_lock is null)
         {
@@ -76,12 +84,13 @@ public sealed partial class ModLibraryStore : IDisposable
             var initialized = BundledModsInitialized || initializeBundledMods;
             using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
-                JsonSerializer.Serialize(output, new LibraryFile(1, mods.ToArray(), initialized), JsonOptions);
+                JsonSerializer.Serialize(output, new LibraryFile(1, mods.ToArray(), initialized, queuedSelection), JsonOptions);
                 output.Flush(true);
             }
 
             File.Move(temporary, path, overwrite: true);
             BundledModsInitialized = initialized;
+            QueuedSelection = queuedSelection;
         }
         finally
         {
@@ -108,5 +117,5 @@ public sealed partial class ModLibraryStore : IDisposable
         }
     }
 
-    private sealed record LibraryFile(int FormatVersion, LibraryMod[] Mods, bool BundledModsInitialized = false);
+    private sealed record LibraryFile(int FormatVersion, LibraryMod[] Mods, bool BundledModsInitialized = false, string? QueuedSelection = null);
 }

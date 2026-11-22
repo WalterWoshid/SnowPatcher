@@ -31,6 +31,7 @@ public partial class MainWindow
         }
 
         _updateTimer.Start();
+        _selectionTimer.Start();
         await PresentPendingDialogsAsync();
         await RunMaintenanceAsync();
     }

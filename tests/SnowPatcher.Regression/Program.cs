@@ -105,6 +105,10 @@ try
     catch (InvalidDataException error) when (error.Message.Contains("English", StringComparison.Ordinal)) { }
 
     Console.WriteLine("Translation merge and compatibility regression checks passed.");
+
+    var (auto, autoGame) = Fixture("automatic-selection", original);
+    var (_, otherGame) = Fixture("other-installation", original);
+    await AutomaticSelectionChecks.RunAsync(directory.FullName, auto, autoGame, otherGame, legacy, extraLabels, otherEnglish, english);
 }
 finally
 {

@@ -18,8 +18,8 @@ The Windows build is tested; the Linux build is provided without an in-game test
 
 Detects Steam and Epic Games installations; other copies can be selected with Browse.
 Checks mod compatibility and backs up game files before applying changes.
-Drop in SnowPatcher ZIPs or add mod.io links, enable the
-mods you want and click Apply with SnowRunner closed.
+Drop in SnowPatcher ZIPs or add mod.io links. SnowPatcher applies changes
+to enabled mods automatically when SnowRunner is closed.
 
 Checks for SnowPatcher updates at startup. Click the update button to download and
 restart; mods and backups are kept. Version 1.0.0 needs one manual update first.

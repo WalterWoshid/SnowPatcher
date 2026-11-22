@@ -170,11 +170,13 @@ public sealed partial class MainWindowViewModel
         finally { _pendingInstallationRunning = false; RefreshApplyActions(); RefreshCompatibilityActions(); }
     }
 
-    private string PendingSelectionFingerprint()
+    private string PendingSelectionFingerprint() => SelectionFingerprint(Mods.Select(m => m.ToRecord()), GameFolder);
+
+    private static string SelectionFingerprint(IEnumerable<LibraryMod> mods, string gameFolder)
     {
-        var folder = Path.TrimEndingDirectorySeparator(GameFolder);
+        var folder = Path.TrimEndingDirectorySeparator(gameFolder);
         folder = OperatingSystem.IsWindows() ? folder.ToUpperInvariant() : folder;
-        var selection = folder + "\n" + string.Join('\n', Mods.Select(m => m.ToRecord()).OrderBy(m => m.Id)
+        var selection = folder + "\n" + string.Join('\n', mods.OrderBy(m => m.Id)
             .Select(m => $"{m.Id}:{m.Sha256}:{m.IsEnabled}"));
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(selection)));
     }

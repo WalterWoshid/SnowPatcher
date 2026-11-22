@@ -123,7 +123,7 @@ public sealed partial class MainWindowViewModel
             var record = new LibraryMod(Guid.NewGuid(), archive.SourcePath, archive.Sha256, true, source,
                 source is null ? null : DateTimeOffset.UtcNow, source, [], packageId, archive.Package?.Manifest.ModioUrl,
                 source?.Name ?? archive.DisplayName);
-            _library.Save(Mods.Select(m => m.ToRecord()).Append(record));
+            SaveSelection(Mods.Select(m => m.ToRecord()).Append(record));
             AddMod(new ModItemViewModel(archive, record));
         }
         return true;
@@ -180,7 +180,15 @@ public sealed partial class MainWindowViewModel
                 ModioUrl = archive.Package?.Manifest.ModioUrl ?? current.ModioUrl ?? mod.ModPage?.AbsoluteUri,
                 DisplayName = archive.Package?.Manifest.Name ?? source?.Name ?? mod.Name
             };
-            _library.Save(Mods.Where(m => !duplicates.Contains(m)).Select(m => m == mod ? record : m.ToRecord()));
+            var records = Mods.Where(m => !duplicates.Contains(m)).Select(m => m == mod ? record : m.ToRecord());
+            if ((current.IsEnabled && (!sameBytes || mod.IsUnavailable)) || duplicates.Any(m => m.IsEnabled))
+            {
+                SaveSelection(records);
+            }
+            else
+            {
+                _library.Save(records);
+            }
             mod.UseArchive(archive, record);
             foreach (var duplicate in duplicates)
             {
@@ -205,7 +213,7 @@ public sealed partial class MainWindowViewModel
     {
         if (args.PropertyName == nameof(ModItemViewModel.IsEnabled) && !_revertingToggle)
         {
-            if (!CanEditMods || !SaveLibrary())
+            if (!CanEditMods || !SaveLibrary(selectionChanged: true))
             {
                 _revertingToggle = true;
                 try
@@ -227,7 +235,7 @@ public sealed partial class MainWindowViewModel
         }
     }
 
-    private bool SaveLibrary()
+    private bool SaveLibrary(bool selectionChanged = false)
     {
         if (!_libraryReady || _archiveImportCancellation.IsCancellationRequested)
         {
@@ -236,7 +244,15 @@ public sealed partial class MainWindowViewModel
 
         try
         {
-            _library.Save(Mods.Select(m => m.ToRecord()));
+            var records = Mods.Select(m => m.ToRecord());
+            if (selectionChanged)
+            {
+                SaveSelection(records);
+            }
+            else
+            {
+                _library.Save(records);
+            }
             return true;
         }
         catch (Exception error) when (IsLibraryError(error)) { SetStatus($"Could not save the mod list: {error.Message}"); return false; }
@@ -258,7 +274,15 @@ public sealed partial class MainWindowViewModel
 
         try
         {
-            _library.Save(Mods.Where(m => m != mod).Select(m => m.ToRecord()));
+            var records = Mods.Where(m => m != mod).Select(m => m.ToRecord());
+            if (mod.IsEnabled)
+            {
+                SaveSelection(records);
+            }
+            else
+            {
+                _library.Save(records);
+            }
         }
         catch (Exception error) when (IsLibraryError(error)) { SetStatus($"Could not save the mod list: {error.Message}"); return; }
         Mods.Remove(mod);

@@ -4,5 +4,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/SnowPatcher.Core/SnowPatcher.Core.csproj" />
+    <ProjectReference Include="../../src/SnowPatcher.App/SnowPatcher.App.csproj" />
   </ItemGroup>
 </Project>

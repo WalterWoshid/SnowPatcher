@@ -61,6 +61,7 @@ public sealed partial class MainWindowViewModel
                 return;
             }
 
+            BindUnassignedSelection();
             _patchCheck = patchCheck;
             var report = patchCheck.Report;
             if (report.BuildId is { } build && (Inspection?.BuildId != build || Inspection.Store != report.Store))
@@ -74,10 +75,7 @@ public sealed partial class MainWindowViewModel
                 selected.Single(m => m.ToRecord().Id == result.LibraryId).SetCompatibility(result, report);
             }
 
-            var issues = report.Mods.Count(m => m.HasBlockingIssues);
-            SetCompatibilitySummary(issues > 0 ? $"{issues} {(issues == 1 ? "mod needs" : "mods need")} attention. Click a check result for details."
-                : patchCheck.BlockReason ?? (report.HasWarnings ? "Some translations could not be applied. Click a check result for details."
-                    : patchCheck.HasPendingChanges ? "Changes not applied." : ""));
+            SetCompatibilitySummary(SelectionSummary(patchCheck));
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception error) when (IsLibraryError(error))
@@ -122,6 +120,10 @@ public sealed partial class MainWindowViewModel
 
     private void SetCompatibilitySummary(string text)
     {
+        if (_compatibilitySummary == text)
+        {
+            return;
+        }
         _compatibilitySummary = text;
         RaisePropertyChanged(nameof(StatusText));
     }
@@ -138,19 +140,20 @@ public sealed partial class MainWindowViewModel
 
         CancelVerification();
         _compatibilityCancellation?.Cancel();
+        var installation = new GameInstallation(GameFolder);
         var selected = Mods.Where(m => m.IsEnabled).Select(m => new CompatibilityInput(m.ToRecord().Id, m.Archive)).ToArray();
         _isApplying = true;
         RefreshApplyActions();
         string message;
         try
         {
-            var result = await RunGameOperationAsync(() => _patchInstaller.ApplyAsync(new GameInstallation(GameFolder), selected, new Progress<string>(SetStatus)));
+            var result = await RunGameOperationAsync(() => _patchInstaller.ApplyAsync(installation, selected, new Progress<string>(SetStatus)));
             message = result.Recovered ? "Recovery completed." : result.Changed ? selected.Length == 0 ? "Mods removed." : "Mods applied." : "No changes to apply.";
             if (result.HasWarnings)
             {
                 message += " Some translations were skipped. Click a check result for details.";
             }
-            _hasBackups = (await _backupStore.ListAsync(new GameInstallation(GameFolder))).Count > 0;
+            _hasBackups = (await _backupStore.ListAsync(installation)).Count > 0;
         }
         catch (Exception error) when (IsLibraryError(error) || error is System.Text.Json.JsonException)
         {
@@ -165,6 +168,10 @@ public sealed partial class MainWindowViewModel
             catch (Exception error) when (IsLibraryError(error)) { message += " Could not clear the saved installation request. " + error.Message; }
         }
         SetStatus(message);
+        if (_patchCheck is { HasPendingChanges: false, BlockReason: null, Report.HasBlockingIssues: false })
+        {
+            ClearQueuedSelection();
+        }
     }
 
     private void RefreshApplyActions()

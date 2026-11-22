@@ -154,7 +154,7 @@ public sealed partial class MainWindowViewModel
                 mod.SetBusy("Loading version...");
                 var archive = await _library.ImportAsync(previous.SourcePath, previous.Sha256, token);
                 await ReplaceArchiveAsync(mod, archive, null, token);
-                SetStatus("Previous version selected. Click Apply to install it.");
+                SetStatus("");
             }
             finally { mod.SetBusy(""); _archiveImportLock.Release(); RefreshCompatibilityActions(); }
         }
