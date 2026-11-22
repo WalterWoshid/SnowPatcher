@@ -41,7 +41,10 @@ internal static class AutomaticSelectionChecks
             await window.AddArchivesAsync([second.Archive.SourcePath]);
             await window.CheckCompatibilityAsync();
             await window.ApplyQueuedSelectionAsync();
-            Require(window.IsGameRunning && window.StatusText == "Pending - applies when SnowRunner closes.", "The running game must show a pending selection.");
+            Require(!runningGame.HasExited, "The fixture game process exited early.");
+            Require(window.IsGameRunning, "SnowPatcher did not detect the fixture game process.");
+            Require(window.StatusText == "Pending - applies when SnowRunner closes.",
+                $"The running game must show a pending selection. Actual status: {window.StatusText}");
             Require(File.ReadAllBytes(game.InitialPakPath).SequenceEqual(original), "A queued import patched a running game.");
         }
         finally
@@ -110,15 +113,16 @@ internal static class AutomaticSelectionChecks
         // A harmless executable in the fixture exercises the real process guard.
         var windows = OperatingSystem.IsWindows();
         var path = Path.Combine(game.RootDirectory, windows ? "SnowRunner.exe" : "SnowRunner");
-        File.Copy(windows ? Path.Combine(Environment.SystemDirectory, "ping.exe") : "/bin/sleep", path);
+        File.Copy(windows ? Path.Combine(Environment.SystemDirectory, "ping.exe") : "/bin/bash", path);
         if (!OperatingSystem.IsWindows())
         {
             File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserExecute);
         }
-        return Process.Start(new ProcessStartInfo(path, windows ? "-t 127.0.0.1" : "90")
+        return Process.Start(new ProcessStartInfo(path, windows ? "-t 127.0.0.1" : "-c \"read -r\"")
         {
             UseShellExecute = false,
             CreateNoWindow = true,
+            RedirectStandardInput = !windows,
             RedirectStandardOutput = true,
             RedirectStandardError = true
         }) ?? throw new InvalidOperationException("The fixture game process could not start.");
